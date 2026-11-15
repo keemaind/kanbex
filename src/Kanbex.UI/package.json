@@ -1,0 +1,11 @@
+{
+  "name": "@kanbex/ui",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "peerDependencies": {
+    "m3-expressive-react": "^1.8.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  }
+}

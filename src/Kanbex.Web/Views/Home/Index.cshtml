@@ -1,0 +1,22 @@
+﻿@{
+    Layout = null;
+    ViewData["Title"] = "Material 3 Expressive";
+}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+</head>
+<body>
+    <div id="root"></div>
+
+    <environment include="Development">
+        <dev-vite-scripts app-name="ReactApp" />
+    </environment>
+    <environment exclude="Development">
+        <prod-vite-scripts app-name="ReactApp" />
+    </environment>
+</body>
+</html>

@@ -1,0 +1,101 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+  font-family: 'DM Sans', sans-serif;
+  color: #211d27;
+  background: #f7f5fa;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+  background:
+    radial-gradient(ellipse at 80% 12%, rgb(226 217 247 / 70%), transparent 35%),
+    radial-gradient(ellipse at 8% 90%, rgb(219 235 241 / 70%), transparent 32%),
+    #f7f5fa;
+}
+
+.demo-card {
+  width: min(100%, 880px);
+  padding: clamp(28px, 6vw, 64px);
+  overflow: hidden;
+  border: 1px solid rgb(103 80 164 / 12%);
+  border-radius: 32px;
+  background: rgb(255 255 255 / 88%);
+  box-shadow: 0 24px 80px rgb(45 35 68 / 10%);
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #6750a4;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.eyebrow::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #b69df8;
+  content: '';
+}
+
+h1 {
+  margin: 16px 0 12px;
+  font-family: Manrope, sans-serif;
+  font-size: clamp(32px, 6vw, 52px);
+  font-weight: 700;
+  letter-spacing: -.045em;
+  line-height: 1.08;
+}
+
+.demo-copy p {
+  max-width: 580px;
+  margin: 0;
+  color: #625d69;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.button-showcase {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 48px;
+  padding-top: 32px;
+  border-top: 1px solid #eeeaf3;
+}
+
+.button-example {
+  display: flex;
+  min-height: 96px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  border-radius: 20px;
+  background: #faf9fc;
+}
+
+.button-example > span {
+  color: #797481;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+@media (max-width: 560px) {
+  .button-showcase { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

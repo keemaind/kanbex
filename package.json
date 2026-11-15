@@ -1,0 +1,13 @@
+{
+  "name": "kanbex",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "src/Kanbex.Web/ReactApp",
+    "src/Kanbex.UI"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @kanbex/web-client",
+    "build": "npm run build --workspace @kanbex/web-client"
+  }
+}
