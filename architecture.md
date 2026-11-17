@@ -22,7 +22,7 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 
 ## 3. Структура решения и репозитория
 
-Целевая структура ниже создана как каркас: существующий MVC-проект перемещён в `src/Kanbex.Web`, добавлены проекты `Kanbex.Infrastructure` и `Kanbex.UI`, а также решение `Kanbex.sln`. Папки под будущие слои и компоненты пока содержат только `.gitkeep`; API, Identity, EF Core, сущности и UI-компоненты ещё не реализованы. Тестовые проекты оставлены на следующий этап.
+Структура решения включает `src/Kanbex.Web`, `src/Kanbex.Infrastructure`, `src/Kanbex.UI` и `Kanbex.sln`. Инфраструктурный проект содержит модель данных, конфигурации EF Core, Identity persistence и начальные миграции SQLite. Реализация API, прикладной логики и UI-компонентов остаётся за рамками текущего этапа. Тестовые проекты оставлены на следующий этап.
 
 ```text
 /
@@ -62,12 +62,17 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 │   │   ├── appsettings.json                 # конфигурация и строка SQLite
 │   │   └── Kanbex.Web.csproj
 │   ├── Kanbex.Infrastructure/                # EF Core, SQLite и Identity persistence
+│   │   ├── Domain/
+│   │   │   ├── Entities/                      # Project, columns, tasks, history, comments, tags
+│   │   │   └── Enums/                         # Роли участников, приоритеты, события истории
 │   │   ├── Persistence/
 │   │   │   ├── KanbexDbContext.cs            # IdentityDbContext и доменные DbSet
 │   │   │   ├── Configurations/               # IEntityTypeConfiguration<T>
-│   │   │   └── Migrations/                   # EF Core migrations
+│   │   │   ├── Migrations/                   # EF Core migrations и model snapshot
+│   │   │   └── KanbexDbContextFactory.cs      # Design-time создание контекста для dotnet ef
 │   │   ├── Identity/
-│   │   │   └── ApplicationUser.cs            # расширение IdentityUser при необходимости
+│   │   │   ├── ApplicationUser.cs            # Расширение IdentityUser
+│   │   │   └── IdentityRoleNames.cs           # Имена глобальных ролей
 │   │   └── Kanbex.Infrastructure.csproj
 │   └── Kanbex.UI/                            # библиотека общих React-компонентов
 │       ├── src/
@@ -88,7 +93,7 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 └── package-lock.json
 ```
 
-`ReactApp` находится внутри `Kanbex.Web`, чтобы плагин `vite-dotnet` публиковал сборку в `wwwroot/ReactApp`. `Kanbex.UI` является отдельным npm workspace-пакетом. `Kanbex.Infrastructure` — отдельный .NET-проект, на который ссылается `Kanbex.Web`. Папки для будущего API, приложения React, persistence и компонентов созданы как placeholders и пока не содержат реализации.
+`ReactApp` находится внутри `Kanbex.Web`, чтобы плагин `vite-dotnet` публиковал сборку в `wwwroot/ReactApp`. `Kanbex.UI` является отдельным npm workspace-пакетом. `Kanbex.Infrastructure` — отдельный .NET-проект, на который ссылается `Kanbex.Web`; в нём уже реализованы модель данных, конфигурации EF Core и миграции. API и прикладная логика пока не реализованы.
 
 ## 4. Проекты и ответственность
 
@@ -112,12 +117,14 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 
 **Назначение:** EF Core DbContext, конфигурация сущностей, SQLite и миграции.
 
-- `KanbexDbContext` наследуется от `IdentityDbContext<ApplicationUser>` и содержит доменные `DbSet`.
-- `ApplicationUser` расширяет Identity-пользователя только необходимыми полями.
+- `KanbexDbContext` наследуется от `IdentityDbContext<ApplicationUser>` и содержит доменные `DbSet`; стандартные таблицы Identity, включая claims, logins и tokens, сохранены.
+- `ApplicationUser` расширяет Identity-пользователя полями `DisplayName`, `AvatarUrl` и `CreatedAt`. Глобальные роли: `Admin` и `User`.
 - Конфигурации сущностей задаются Fluent API в `Persistence/Configurations/`.
 - EF Core Code First migrations создают и обновляют схему SQLite; изменения схемы в обход миграций запрещены.
 - Connection string задаётся конфигурацией `Kanbex.Web`. Локальный файл базы не включается в исходный контроль версий, если не является специально подготовленным демо-артефактом.
-- Базовые сущности: `Board` (владелец, название и метаданные), `BoardColumn` (доска, название, порядок, WIP-лимит), `TaskCard` (колонка, заголовок, описание, приоритет, порядок). Доска принадлежит одному Identity-пользователю; внешние связи настраиваются явно.
+- Модель покрывает проекты (по одной Kanban-доске на проект), участников, колонки, задачи, историю, комментарии, теги и связи задач с тегами. Приоритет задачи, событие истории и роль участника проекта представлены C#-перечислениями и хранятся строками.
+- Ограничения БД включают уникальность участия пользователя в проекте, уникальность имени тега в проекте, согласованность проекта у задачи и её колонки, а также проверки WIP-лимита, оценок и позиций. `Project.Version` служит токеном конкурентного изменения.
+- `KanbexDbContextFactory` позволяет запускать `dotnet ef` непосредственно с инфраструктурным проектом. Например: `dotnet ef migrations add <ИмяМиграции> --project src/Kanbex.Infrastructure --startup-project src/Kanbex.Infrastructure --output-dir Persistence/Migrations`, затем `dotnet ef database update` с теми же параметрами. Design-time factory использует локальную строку `Data Source=kanbex.db`; приложение позднее должно передавать рабочую строку подключения из конфигурации `Kanbex.Web`.
 - В локальной разработке миграции применяются через `dotnet ef database update`. Автоматическое применение при старте допустимо для учебной среды; для развёртывания предпочтительны контролируемые миграции.
 
 ### 4.3. Kanbex.UI — библиотека общих React-компонентов
