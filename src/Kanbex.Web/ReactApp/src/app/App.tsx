@@ -10,7 +10,7 @@ import { AppRouter } from '../routes/index.js'
  */
 export function App() {
   return (
-    <ThemeProvider seedColor="#2f6b4f" mode="light">
+    <ThemeProvider seedColor="#7979FF" mode="light">
       <BrowserRouter>
         <AuthProvider>
           <AppRouter />

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router'
-import { AppHeader } from '@kanbex/ui'
+import { AppHeader, KanbexLogo } from '@kanbex/ui'
 import { RegisterForm, useAuth } from '../features/auth/index.js'
 import type { RegisterRequest } from '../types/index.js'
 
@@ -18,7 +18,7 @@ export function RegisterPage() {
 
   return (
     <div className="kb-auth-page">
-      <AppHeader title="Kanbex" subtitle="Тренажёр Kanban-потока" />
+      <AppHeader subtitle="Тренажёр Kanban-потока" logo={<KanbexLogo height={30} />} />
       <main className="kb-auth">
         <div className="kb-auth__card">
           <h1 className="kb-auth__title">Регистрация</h1>

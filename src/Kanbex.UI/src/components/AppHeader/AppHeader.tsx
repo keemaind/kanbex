@@ -9,10 +9,12 @@ export function AppHeader({ title, subtitle, logo, nav = [], actions }: AppHeade
     <header className="kb-header">
       <div className="kb-header__brand">
         {logo ? <span className="kb-header__logo">{logo}</span> : null}
-        <div className="kb-header__titles">
-          <span className="kb-header__title">{title}</span>
-          {subtitle ? <span className="kb-header__subtitle">{subtitle}</span> : null}
-        </div>
+        {title || subtitle ? (
+          <div className="kb-header__titles">
+            {title ? <span className="kb-header__title">{title}</span> : null}
+            {subtitle ? <span className="kb-header__subtitle">{subtitle}</span> : null}
+          </div>
+        ) : null}
       </div>
 
       {nav.length > 0 ? (

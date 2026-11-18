@@ -1,8 +1,8 @@
 import { useDroppable } from '@dnd-kit/core'
-import { StatusBadge } from '@kanbex/ui'
+import { AppButton, StatusBadge } from '@kanbex/ui'
 import type { BadgeTone } from '@kanbex/ui'
 import type { BoardColumn as BoardColumnModel, TaskCard as TaskCardModel } from '../../types/index.js'
-import { getWipState } from './boardLogic.js'
+import { canAcceptTask, getWipState } from './boardLogic.js'
 import { TaskCard } from './TaskCard.js'
 
 export interface BoardColumnProps {
@@ -12,6 +12,7 @@ export interface BoardColumnProps {
   disabled?: boolean
   onOpenTask: (task: TaskCardModel) => void
   onMoveTask: (taskId: string, targetColumnId: string) => void
+  onCreateTask: (columnId: string) => void
 }
 
 function wipTone(used: number, limit: number | null): BadgeTone {
@@ -25,8 +26,16 @@ function wipTone(used: number, limit: number | null): BadgeTone {
  * Колонка канбан-доски: заголовок, счётчик WIP, список карточек и зона
  * для перетаскивания. WIP-лимит подсвечивается, но не блокирует просмотр.
  */
-export function BoardColumn({ column, boardColumns, disabled = false, onOpenTask, onMoveTask }: BoardColumnProps) {
+export function BoardColumn({
+  column,
+  boardColumns,
+  disabled = false,
+  onOpenTask,
+  onMoveTask,
+  onCreateTask,
+}: BoardColumnProps) {
   const wip = getWipState(column)
+  const acceptsTask = canAcceptTask(column)
   const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { columnId: column.id } })
 
   const sortedTasks = [...column.tasks].sort((a, b) => a.order - b.order)
@@ -39,6 +48,7 @@ export function BoardColumn({ column, boardColumns, disabled = false, onOpenTask
       className={isOver ? 'kb-column kb-column--over' : 'kb-column'}
       aria-labelledby={`column-title-${column.id}`}
       data-column-id={column.id}
+      data-stage={column.order % 3}
     >
       <header className="kb-column__header">
         <h2 className="kb-column__title" id={`column-title-${column.id}`}>
@@ -64,7 +74,7 @@ export function BoardColumn({ column, boardColumns, disabled = false, onOpenTask
 
       <div className="kb-column__tasks">
         {sortedTasks.length === 0 ? (
-          <p className="kb-column__empty">Пока пусто. Перетащите карточку сюда.</p>
+          <p className="kb-column__empty">Пока пусто. Перетащите карточку сюда или создайте новую.</p>
         ) : (
           sortedTasks.map((task) => (
             <TaskCard
@@ -82,6 +92,17 @@ export function BoardColumn({ column, boardColumns, disabled = false, onOpenTask
           ))
         )}
       </div>
+
+      <AppButton
+        variant="text"
+        size="sm"
+        className="kb-column__add"
+        onClick={() => onCreateTask(column.id)}
+        disabled={disabled || !acceptsTask}
+        title={acceptsTask ? 'Добавить задачу в колонку' : 'WIP-лимит достигнут: сначала завершите задачу'}
+      >
+        + Задача
+      </AppButton>
     </section>
   )
 }

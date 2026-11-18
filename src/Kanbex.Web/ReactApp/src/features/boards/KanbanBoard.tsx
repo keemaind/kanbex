@@ -18,13 +18,14 @@ export interface KanbanBoardProps {
   disabled?: boolean
   onMoveTask: (taskId: string, targetColumnId: string) => void
   onOpenTask: (task: TaskCardModel) => void
+  onCreateTask: (columnId: string) => void
 }
 
 /**
  * Канбан-доска: горизонтально прокручиваемая сетка колонок с drag-and-drop
  * между этапами. Перетаскивание — дополнение, а не замена кнопкам на карточке.
  */
-export function KanbanBoard({ board, disabled = false, onMoveTask, onOpenTask }: KanbanBoardProps) {
+export function KanbanBoard({ board, disabled = false, onMoveTask, onOpenTask, onCreateTask }: KanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<TaskCardModel | null>(null)
 
   const sensors = useSensors(
@@ -79,6 +80,7 @@ export function KanbanBoard({ board, disabled = false, onMoveTask, onOpenTask }:
               disabled={disabled}
               onOpenTask={onOpenTask}
               onMoveTask={onMoveTask}
+              onCreateTask={onCreateTask}
             />
           ))}
         </div>

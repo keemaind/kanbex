@@ -20,7 +20,8 @@ export interface EmptyStateAction {
 
 /** Пропсы общей верхней панели приложения. */
 export interface AppHeaderProps {
-  title: string
+  /** Текстовая марка; не нужна, если в `logo` передан словесный знак. */
+  title?: string
   subtitle?: string
   /** Слот для логотипа или иконки. */
   logo?: ReactNode

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { Board, TaskCard } from '../../types/index.js'
-import { moveTaskToColumn, type MoveTaskResult } from './boardLogic.js'
+import { addTaskToColumn, moveTaskToColumn, type AddTaskResult, type MoveTaskResult, type NewTaskInput } from './boardLogic.js'
 
 export interface UseBoardResult {
   board: Board
   lastMove: MoveTaskResult | null
   moveTask: (taskId: string, targetColumnId: string) => MoveTaskResult
+  addTask: (columnId: string, input: NewTaskInput) => AddTaskResult
   resetBoard: (initial: Board) => void
   /** Обновлённая карточка или `null`, если карточка не найдена. */
   updateTask: (taskId: string, patch: Partial<Pick<TaskCard, 'title' | 'description'>>) => TaskCard | null
@@ -45,6 +46,15 @@ export function useBoard(initialBoard: Board): UseBoardResult {
     setLastMove(null)
   }, [])
 
+  const addTask = useCallback<UseBoardResult['addTask']>(
+    (columnId, input) => {
+      const result = addTaskToColumn(board, columnId, input)
+      if (result.task) setBoard(result.board)
+      return result
+    },
+    [board],
+  )
+
   const updateTask = useCallback<UseBoardResult['updateTask']>(
     (taskId, patch) => {
       const column = board.columns.find((candidate) =>
@@ -66,5 +76,5 @@ export function useBoard(initialBoard: Board): UseBoardResult {
     [board],
   )
 
-  return { board, lastMove, moveTask, resetBoard, updateTask }
+  return { board, lastMove, moveTask, addTask, resetBoard, updateTask }
 }

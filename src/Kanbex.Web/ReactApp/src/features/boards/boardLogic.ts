@@ -1,4 +1,18 @@
-import type { Board, BoardColumn, TaskCard, WipState } from '../../types/index.js'
+import type { Board, BoardColumn, TaskCard, TaskPriority, WipState } from '../../types/index.js'
+
+/** Поля новой задачи, которые заполняет пользователь в диалоге. */
+export interface NewTaskInput {
+  title: string
+  description?: string
+  priority?: TaskPriority
+}
+
+export interface AddTaskResult {
+  board: Board
+  /** Созданная карточка или `null`, если добавление отклонено. */
+  task: TaskCard | null
+  rejection?: 'invalid-title' | 'not-found' | 'wip-limit'
+}
 
 /** Рассчитывает состояние WIP-лимита колонки. */
 export function getWipState(column: BoardColumn): WipState {
@@ -14,6 +28,52 @@ export function getWipState(column: BoardColumn): WipState {
 /** Можно ли добавить ещё одну карточку в колонку без нарушения WIP. */
 export function canAcceptTask(column: BoardColumn): boolean {
   return column.wipLimit === null || column.tasks.length < column.wipLimit
+}
+
+function createTaskId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+
+  return `task-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+/**
+ * Добавляет задачу в конец колонки. Правила те же, что будут на сервере:
+ * непустое название и свободный слот WIP-лимита. Исходная доска не меняется.
+ */
+export function addTaskToColumn(board: Board, columnId: string, input: NewTaskInput): AddTaskResult {
+  const title = input.title.trim()
+  if (title.length < 2) {
+    return { board, task: null, rejection: 'invalid-title' }
+  }
+
+  const column = board.columns.find((candidate) => candidate.id === columnId)
+  if (!column) {
+    return { board, task: null, rejection: 'not-found' }
+  }
+
+  if (!canAcceptTask(column)) {
+    return { board, task: null, rejection: 'wip-limit' }
+  }
+
+  const task: TaskCard = {
+    id: createTaskId(),
+    title,
+    description: input.description?.trim() ?? '',
+    priority: input.priority ?? 'medium',
+    order: column.tasks.length,
+  }
+
+  return {
+    board: {
+      ...board,
+      columns: board.columns.map((candidate) =>
+        candidate.id === columnId ? { ...candidate, tasks: [...candidate.tasks, task] } : candidate,
+      ),
+    },
+    task,
+  }
 }
 
 export interface MoveTaskResult {

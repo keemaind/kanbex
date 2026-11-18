@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router'
-import { AppButton, AppHeader } from '@kanbex/ui'
+import { AppButton, AppHeader, KanbexLogo } from '@kanbex/ui'
 import type { AppHeaderNavItem } from '@kanbex/ui'
 import { useAuth } from '../features/auth/index.js'
 
@@ -30,9 +30,8 @@ export function AppLayout() {
   return (
     <div className="kb-app">
       <AppHeader
-        title="Kanbex"
         subtitle="Тренажёр Kanban-потока"
-        logo={<span aria-hidden="true">▦</span>}
+        logo={<KanbexLogo height={30} />}
         nav={nav}
         actions={
           <>

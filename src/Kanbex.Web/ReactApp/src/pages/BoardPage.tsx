@@ -1,11 +1,18 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { AppButton, AppDialog, EmptyState, LoadingState, StatusBadge } from '@kanbex/ui'
-import { demoBoard, demoLearningTips, getBoardForProject, KanbanBoard, useBoard } from '../features/boards/index.js'
+import { demoBoard, demoLearningTips, getBoardForProject, KanbanBoard, TaskCreateDialog, useBoard } from '../features/boards/index.js'
+import type { NewTaskInput } from '../features/boards/index.js'
 import { LearningTips } from '../features/learning/index.js'
 import type { TaskCard as TaskCardModel } from '../types/index.js'
 
 const boardIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+const priorityLabels: Record<TaskCardModel['priority'], string> = {
+  low: 'Низкий',
+  medium: 'Средний',
+  high: 'Высокий',
+}
 
 /**
  * Представление доски: канбан-колонки и обучающие подсказки.
@@ -18,8 +25,10 @@ export function BoardPage() {
   // Доска берётся из списка проектов; для созданных на клиенте проектов
   // собирается пустая стартовая доска с теми же тремя этапами.
   const initialBoard = useMemo(() => getBoardForProject(boardId), [boardId])
-  const { board, lastMove, moveTask, resetBoard } = useBoard(initialBoard ?? demoBoard)
+  const { board, lastMove, moveTask, addTask, resetBoard } = useBoard(initialBoard ?? demoBoard)
   const [activeTask, setActiveTask] = useState<TaskCardModel | null>(null)
+  const [createColumnId, setCreateColumnId] = useState<string | null>(null)
+  const [notice, setNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null)
 
   if (!boardIdPattern.test(boardId)) {
     return (
@@ -52,6 +61,28 @@ export function BoardPage() {
   }
 
   const wipRejection = lastMove?.rejection === 'wip-limit'
+  const createColumn = createColumnId
+    ? board.columns.find((column) => column.id === createColumnId) ?? null
+    : null
+
+  const handleCreateTask = (input: NewTaskInput) => {
+    if (!createColumnId) return
+
+    const result = addTask(createColumnId, input)
+    setCreateColumnId(null)
+
+    if (result.rejection === 'wip-limit') {
+      setNotice({ tone: 'danger', text: 'Задача не добавлена: в колонке достигнут WIP-лимит.' })
+      return
+    }
+
+    if (!result.task) {
+      setNotice({ tone: 'danger', text: 'Задача не добавлена: проверьте название и выбранную колонку.' })
+      return
+    }
+
+    setNotice({ tone: 'success', text: `Задача «${result.task.title}» добавлена.` })
+  }
 
   return (
     <div className="kb-page">
@@ -70,7 +101,11 @@ export function BoardPage() {
             <AppButton
               variant="outlined"
               size="sm"
-              onClick={() => resetBoard(demoBoard)}
+              onClick={() => {
+                resetBoard(demoBoard)
+                setNotice(null)
+                setCreateColumnId(null)
+              }}
               aria-label="Вернуть демонстрационную доску в исходное состояние"
             >
               Сбросить демо
@@ -82,14 +117,22 @@ export function BoardPage() {
       <div className="kb-board-layout">
         <KanbanBoard
           board={board}
-          onMoveTask={(taskId, targetColumnId) => moveTask(taskId, targetColumnId)}
+          onMoveTask={(taskId, targetColumnId) => {
+            setNotice(null)
+            moveTask(taskId, targetColumnId)
+          }}
           onOpenTask={(task) => setActiveTask(task)}
+          onCreateTask={(columnId) => setCreateColumnId(columnId)}
         />
         <LearningTips tips={demoLearningTips} />
       </div>
 
       <div className="kb-board__feedback" role="status" aria-live="polite">
-        {wipRejection ? (
+        {notice ? (
+          <StatusBadge tone={notice.tone} withDot>
+            {notice.text}
+          </StatusBadge>
+        ) : wipRejection ? (
           <StatusBadge tone="danger" withDot>
             Перемещение отклонено: в целевой колонке достигнут WIP-лимит.
           </StatusBadge>
@@ -117,7 +160,7 @@ export function BoardPage() {
           <dl className="kb-task-meta">
             <div>
               <dt>Приоритет</dt>
-              <dd>{activeTask.priority}</dd>
+              <dd>{priorityLabels[activeTask.priority]}</dd>
             </div>
             <div>
               <dt>Позиция</dt>
@@ -126,6 +169,14 @@ export function BoardPage() {
           </dl>
         ) : null}
       </AppDialog>
+
+      {createColumn ? (
+        <TaskCreateDialog
+          columnTitle={createColumn.title}
+          onCreate={handleCreateTask}
+          onCancel={() => setCreateColumnId(null)}
+        />
+      ) : null}
     </div>
   )
 }

@@ -281,9 +281,22 @@ code {
   gap: 12px;
   padding: 14px;
   border: 2px solid transparent;
+  border-top: 3px solid var(--kb-column-accent, var(--md-sys-color-outline-variant));
   border-radius: var(--md-sys-shape-corner-large, 16px);
   background: var(--md-sys-color-surface-container-low);
   transition: border-color 120ms ease, background 120ms ease;
+}
+
+.kb-column[data-stage='0'] {
+  --kb-column-accent: var(--kb-color-violet);
+}
+
+.kb-column[data-stage='1'] {
+  --kb-column-accent: var(--kb-color-red);
+}
+
+.kb-column[data-stage='2'] {
+  --kb-column-accent: var(--kb-color-green);
 }
 
 .kb-column--over {
@@ -299,9 +312,21 @@ code {
 }
 
 .kb-column__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   font-size: 15px;
   font-weight: 600;
+}
+
+.kb-column__title::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--kb-column-accent, var(--md-sys-color-outline));
 }
 
 .kb-column__wip {
@@ -312,7 +337,7 @@ code {
 }
 
 .kb-column__wip--limit {
-  color: var(--md-sys-color-error);
+  color: var(--kb-color-red);
 }
 
 .kb-column__tasks {
@@ -330,6 +355,11 @@ code {
   color: var(--md-sys-color-on-surface-variant);
   font-size: 13px;
   text-align: center;
+}
+
+.kb-column__add {
+  justify-content: center;
+  width: 100%;
 }
 
 /* ---------- Карточка задачи ---------- */

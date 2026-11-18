@@ -13,11 +13,33 @@
     "src"
   ],
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "dev": "tsc --noEmit --watch",
+    "build": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "test:coverage": "jest --coverage"
   },
   "peerDependencies": {
     "m3-expressive-react": "^1.8.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.13",
+    "@babel/preset-env": "^7.29.14",
+    "@babel/preset-react": "^7.29.7",
+    "@babel/preset-typescript": "^7.29.7",
+    "@eslint/js": "^9.39.5",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "babel-jest": "^30.5.2",
+    "eslint": "^9.39.5",
+    "globals": "^17.13.0",
+    "jest": "^30.5.2",
+    "jest-environment-jsdom": "^30.5.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.0"
   }
 }

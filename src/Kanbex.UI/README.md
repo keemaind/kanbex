@@ -12,6 +12,7 @@
 | `AppDialog` | Модальный диалог подтверждения или информирования. |
 | `AppHeader` | Верхняя панель с навигацией и слотами действий. |
 | `EmptyState` | Пустое состояние с пояснением и действием. |
+| `KanbexLogo` | Встроенный SVG-логотип с палитрой бренда. |
 | `LoadingState` | Индикация ожидания. |
 | `StatusBadge` | Метка приоритета или статуса. |
 
@@ -27,7 +28,19 @@ import '@kanbex/ui/styles.css'
 
 Стили используют токены `--md-sys-color-*`, которые выставляет `ThemeProvider`
 из `m3-expressive-react`, поэтому библиотека автоматически следует теме
-основного приложения.
+основного приложения. Фирменные цвета логотипа доступны как `--kb-color-violet`,
+`--kb-color-violet-soft`, `--kb-color-red`, `--kb-color-red-soft`,
+`--kb-color-green`, `--kb-color-green-soft`.
+
+## Тесты
+
+Компоненты покрыты unit-тестами на Jest (`jsdom`, Testing Library). Порог
+покрытия — 70% по statements, branches, functions и lines:
+
+```bash
+npm test --workspace @kanbex/ui
+npm run test:coverage --workspace @kanbex/ui
+```
 
 ## Границы ответственности
 

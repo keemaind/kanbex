@@ -22,8 +22,8 @@ export function BoardsPage() {
   const normalizedQuery = query.trim().toLocaleLowerCase('ru')
   const visibleProjects = normalizedQuery
     ? projects.filter((project) =>
-        `${project.title} ${project.description}`.toLocaleLowerCase('ru').includes(normalizedQuery),
-      )
+      `${project.title} ${project.description}`.toLocaleLowerCase('ru').includes(normalizedQuery),
+    )
     : projects
 
   const totalLabel = `${projects.length} ${pluralize(projects.length, ['проект', 'проекта', 'проектов'])}`
