@@ -126,6 +126,8 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 - Ограничения БД включают уникальность участия пользователя в проекте, уникальность имени тега в проекте, согласованность проекта у задачи и её колонки, а также проверки WIP-лимита, оценок и позиций. `Project.Version` служит токеном конкурентного изменения.
 - `KanbexDbContextFactory` позволяет запускать `dotnet ef` непосредственно с инфраструктурным проектом. Например: `dotnet ef migrations add <ИмяМиграции> --project src/Kanbex.Infrastructure --startup-project src/Kanbex.Infrastructure --output-dir Persistence/Migrations`, затем `dotnet ef database update` с теми же параметрами. Design-time factory использует локальную строку `Data Source=kanbex.db`; приложение позднее должно передавать рабочую строку подключения из конфигурации `Kanbex.Web`.
 - В локальной разработке миграции применяются через `dotnet ef database update`. Автоматическое применение при старте допустимо для учебной среды; для развёртывания предпочтительны контролируемые миграции.
+- `Kanbex.Web` читает строку подключения из `ConnectionStrings:Kanbex` (`Data Source=kanbex.db` по умолчанию) и в Development сам применяет миграции при старте, затем идемпотентно создаёт роли `Admin`/`User` и демонстрационную учётную запись `student@kanbex.local` (флаг `SeedDemoUser`). В production миграции и сиды не запускаются автоматически.
+- Identity настраивается через `AddIdentity<ApplicationUser, IdentityRole>` с EF Core-хранилищем и same-origin cookie `Kanbex.Auth`. Для путей `/api/*` неаутентифицированный запрос получает `401`, а недостаток прав — `403`, без HTML-редиректа на страницу входа. Для изменяющих состояние запросов регистрируется antiforgery с заголовком `X-CSRF-TOKEN`.
 
 ### 4.3. Kanbex.UI — библиотека общих React-компонентов
 

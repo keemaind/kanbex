@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Kanbex.Web.Controllers.Api;
@@ -7,6 +8,7 @@ namespace Kanbex.Web.Controllers.Api;
 /// владелец и WIP-правила будут проверяться на сервере при реализации.
 /// </summary>
 [ApiController]
+[Authorize]
 [Route("api/boards")]
 public sealed class BoardsController : ControllerBase
 {

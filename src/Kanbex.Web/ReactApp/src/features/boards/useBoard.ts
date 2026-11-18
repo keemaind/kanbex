@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { Board, TaskCard } from '../../types/index.js'
 import { moveTaskToColumn, type MoveTaskResult } from './boardLogic.js'
 
@@ -22,6 +22,13 @@ export interface UseBoardResult {
 export function useBoard(initialBoard: Board): UseBoardResult {
   const [board, setBoard] = useState<Board>(initialBoard)
   const [lastMove, setLastMove] = useState<MoveTaskResult | null>(null)
+
+  // Переход на другую доску (другой boardId) должен заменить состояние,
+  // а не сохранять карточки предыдущей доски.
+  useEffect(() => {
+    setBoard(initialBoard)
+    setLastMove(null)
+  }, [initialBoard])
 
   const moveTask = useCallback(
     (taskId: string, targetColumnId: string): MoveTaskResult => {

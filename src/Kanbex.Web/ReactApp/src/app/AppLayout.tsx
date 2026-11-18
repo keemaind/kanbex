@@ -14,7 +14,7 @@ export function AppLayout() {
 
   const nav: AppHeaderNavItem[] = [
     {
-      label: 'Мои доски',
+      label: 'Проекты',
       href: '/boards',
       active: pathname === '/boards' || pathname.startsWith('/boards/') || pathname === '/board' || pathname.startsWith('/board/'),
       onClick: () => navigate('/boards'),
@@ -58,7 +58,7 @@ export function AppLayout() {
       <footer className="kb-footer">
         <span>Kanbex — учебный каркас приложения.</span>
         <span>
-          Данные демонстрационные, API и Identity подключаются отдельным этапом. <Link to="/boards">Доски</Link>
+          Данные демонстрационные, API и Identity подключаются отдельным этапом. <Link to="/boards">Проекты</Link>
         </span>
       </footer>
     </div>
