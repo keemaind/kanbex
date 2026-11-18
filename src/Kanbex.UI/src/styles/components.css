@@ -1,0 +1,245 @@
+/* Стили библиотеки @kanbex/ui.
+   Используют токены --md-sys-color-* из m3-expressive-react, поэтому
+   библиотека наследует тему ThemeProvider. Фирменная палитра взята
+   с логотипа Kanbex и доступна как --kb-color-*. */
+
+:root {
+  --kb-color-violet-soft: #A6A6FF;
+  --kb-color-violet: #7979FF;
+  --kb-color-red-soft: #FF8181;
+  --kb-color-red: #FE4B4B;
+  --kb-color-green-soft: #4EFF5A;
+  --kb-color-green: #00C30D;
+  --kb-color-surface: #FFFFFF;
+}
+
+.kb-logo {
+  display: block;
+  width: auto;
+  height: 32px;
+}
+
+.kb-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--md-sys-shape-corner-full, 9999px);
+  font-family: var(--md-sys-typescale-plain-font-family, system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.kb-badge__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.kb-badge--neutral {
+  color: var(--md-sys-color-on-surface-variant);
+  background: var(--md-sys-color-surface-container-high);
+}
+
+.kb-badge--info {
+  color: #1C1B4B;
+  background: var(--kb-color-violet-soft);
+}
+
+.kb-badge--success {
+  color: #06340B;
+  background: var(--kb-color-green-soft);
+}
+
+.kb-badge--warning {
+  color: #3D0A0A;
+  background: var(--kb-color-red-soft);
+}
+
+.kb-badge--danger {
+  color: #2A0303;
+  background: var(--kb-color-red);
+}
+
+.kb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 24px;
+  border: 1px dashed var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-large, 16px);
+  text-align: center;
+  background: var(--md-sys-color-surface-container-low);
+}
+
+.kb-empty__icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.kb-empty__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.kb-empty__description {
+  max-width: 46ch;
+  margin: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.kb-empty__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.kb-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 16px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.kb-loading--compact {
+  flex-direction: row;
+  gap: 8px;
+  padding: 12px 8px;
+  font-size: 13px;
+}
+
+.kb-loading__label {
+  font-size: 13px;
+}
+
+.kb-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 24px;
+  padding: 12px clamp(16px, 4vw, 40px);
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  background:
+    linear-gradient(
+        90deg,
+        var(--kb-color-violet) 0 33.33%,
+        var(--kb-color-red) 33.33% 66.66%,
+        var(--kb-color-green) 66.66% 100%
+      )
+      top / 100% 3px no-repeat,
+    var(--md-sys-color-surface-container);
+}
+
+.kb-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.kb-header__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kb-header__titles {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.kb-header__title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.kb-header__subtitle {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 12px;
+}
+
+.kb-header__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.kb-header__link {
+  padding: 6px 14px;
+  border-radius: var(--md-sys-shape-corner-full, 9999px);
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.kb-header__link:hover {
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+.kb-header__link--active {
+  color: var(--md-sys-color-on-secondary-container);
+  background: var(--md-sys-color-secondary-container);
+}
+
+.kb-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.kb-dialog__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(0 0 0 / 32%);
+}
+
+.kb-dialog {
+  width: min(100%, 480px);
+  padding: 24px;
+  border-radius: var(--md-sys-shape-corner-extra-large, 28px);
+  background: var(--md-sys-color-surface-container-high);
+  box-shadow: var(--md-sys-elevation-shadow-level3);
+}
+
+.kb-dialog__title {
+  margin: 0 0 12px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.kb-dialog__description {
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.kb-dialog__body {
+  margin-top: 16px;
+}
+
+.kb-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+}

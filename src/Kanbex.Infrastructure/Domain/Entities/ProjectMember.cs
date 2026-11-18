@@ -1,0 +1,20 @@
+using Kanbex.Infrastructure.Domain.Enums;
+
+namespace Kanbex.Infrastructure.Domain.Entities;
+
+public sealed class ProjectMember
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public Guid ProjectId { get; set; }
+
+    public Project Project { get; set; } = null!;
+
+    public string UserId { get; set; } = string.Empty;
+
+    public ApplicationUser User { get; set; } = null!;
+
+    public ProjectMemberRole Role { get; set; } = ProjectMemberRole.Member;
+
+    public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
+}
