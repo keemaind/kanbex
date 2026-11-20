@@ -40,8 +40,7 @@ export function AppLayout() {
               variant="text"
               size="sm"
               onClick={() => {
-                logout()
-                navigate('/login')
+                void logout().then(() => navigate('/login', { replace: true }))
               }}
             >
               Выйти
@@ -55,9 +54,10 @@ export function AppLayout() {
       </main>
 
       <footer className="kb-footer">
-        <span>Kanbex — учебный каркас приложения.</span>
+        <span>Kanbex — учебный тренажёр Kanban-потока.</span>
         <span>
-          Данные демонстрационные, API и Identity подключаются отдельным этапом. <Link to="/boards">Проекты</Link>
+          Доски хранятся в браузере, доступ к сессии — через ASP.NET Core Identity.{' '}
+          <Link to="/boards">Проекты</Link>
         </span>
       </footer>
     </div>

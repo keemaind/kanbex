@@ -5,6 +5,7 @@ module.exports = {
   rootDir: __dirname,
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
+  setupFiles: ['<rootDir>/jest.setup.cjs'],
   restoreMocks: true,
   transform: {
     '^.+\\.[jt]sx?$': ['babel-jest', { configFile: path.join(__dirname, 'babel.config.cjs') }],

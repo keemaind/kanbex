@@ -1,51 +1,93 @@
 import type { Board, BoardSummary } from '../types/index.js'
+import { toApiError } from './api.js'
 
-/**
- * Типизированный клиент `/api/boards`.
- *
- * Каркас работает на демонстрационных данных, поэтому методы возвращают
- * отклонённые промисы с явным описанием будущего контракта: вызывающий код
- * уже сейчас обрабатывает состояния загрузки и ошибок.
- */
+export type { ApiProblem } from './api.js'
 
 export interface BoardSaveResult {
   board: Board
-  /** `true`, если сервер принял изменения; `false` — конфликт WIP. */
   accepted: boolean
 }
 
-const notImplemented = (operation: string) =>
-  Promise.reject(new Error(`API-клиент ещё не подключён: ${operation}`))
+async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(url, {
+    credentials: 'same-origin',
+    ...init,
+  })
 
-/** Список досок текущего пользователя. */
+  if (!response.ok) {
+    throw await toApiError(response, `Не удалось выполнить запрос (${response.status}).`)
+  }
+
+  if (response.status === 204) return undefined as T
+  return (await response.json()) as T
+}
+
+let antiforgeryToken: string | null = null
+
+async function getAntiforgeryToken(): Promise<string> {
+  if (antiforgeryToken) return antiforgeryToken
+  const response = await fetch('/api/auth/antiforgery-token', { credentials: 'same-origin' })
+  if (!response.ok) throw await toApiError(response, 'Не удалось получить antiforgery-токен.')
+  const body = (await response.json()) as { requestToken: string }
+  antiforgeryToken = body.requestToken
+  return antiforgeryToken
+}
+
+async function mutate<T>(url: string, method: 'POST' | 'PUT' | 'DELETE', body?: unknown): Promise<T> {
+  const token = await getAntiforgeryToken()
+  try {
+    return await request<T>(url, {
+      method,
+      headers: {
+        'X-CSRF-TOKEN': token,
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    })
+  } catch (error) {
+    if (error instanceof Error && 'status' in error && error.status === 400) antiforgeryToken = null
+    throw error
+  }
+}
+
 export async function fetchBoards(): Promise<BoardSummary[]> {
-  // TODO: GET /api/boards.
-  return notImplemented('GET /api/boards')
+  return request('/api/boards')
 }
 
-/** Доска с колонками и карточками. */
 export async function fetchBoard(boardId: string): Promise<Board> {
-  // TODO: GET /api/boards/{boardId}.
-  return notImplemented(`GET /api/boards/${boardId}`)
+  return request(`/api/boards/${encodeURIComponent(boardId)}`)
 }
 
-/** Создание личной доски с начальными колонками. */
-export async function createBoard(title: string): Promise<Board> {
-  // TODO: POST /api/boards.
-  return notImplemented(`POST /api/boards (${title})`)
+export async function createBoard(title: string, description = ''): Promise<Board> {
+  return mutate('/api/boards', 'POST', { title, description })
 }
 
-/**
- * Сохранение доски. Сервер повторно проверяет WIP-лимиты и владельца,
- * поэтому клиентская проверка не является авторитетной.
- */
 export async function saveBoard(board: Board): Promise<BoardSaveResult> {
-  // TODO: PUT /api/boards/{board.id}.
-  return notImplemented(`PUT /api/boards/${board.id}`)
+  const saved = await mutate<Board>(`/api/boards/${encodeURIComponent(board.id)}`, 'PUT', {
+    title: board.title,
+    description: board.description,
+    version: board.version,
+    columns: board.columns.map((column) => ({
+      id: column.id,
+      title: column.title,
+      wipLimit: column.wipLimit,
+      order: column.order,
+      tasks: column.tasks.map((task) => ({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        order: task.order,
+      })),
+    })),
+  })
+  return { board: saved, accepted: true }
 }
 
-/** Удаление доски. */
 export async function deleteBoard(boardId: string): Promise<void> {
-  // TODO: DELETE /api/boards/{boardId}.
-  return notImplemented(`DELETE /api/boards/${boardId}`)
+  await mutate<void>(`/api/boards/${encodeURIComponent(boardId)}`, 'DELETE')
+}
+
+export async function resetBoard(boardId: string): Promise<Board> {
+  return mutate<Board>(`/api/boards/${encodeURIComponent(boardId)}/reset`, 'POST')
 }

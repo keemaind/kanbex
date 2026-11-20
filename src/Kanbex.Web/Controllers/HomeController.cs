@@ -36,6 +36,20 @@ public class HomeController : Controller
     [HttpPost("/Identity/Account/Logout")]
     public IActionResult IdentityLogout() => Redirect("/login");
 
+    // Неизвестные клиентские адреса тоже должны открывать SPA, чтобы
+    // BrowserRouter показал NotFoundPage. API и файлы с расширением сюда
+    // не попадают: для /api/* возвращается обычный 404, статику отдаёт
+    // middleware раньше fallback-маршрута.
+    public IActionResult SpaFallback()
+    {
+        if (Request.Path.StartsWithSegments("/api"))
+        {
+            return NotFound();
+        }
+
+        return View("Index");
+    }
+
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error() => View();
 }

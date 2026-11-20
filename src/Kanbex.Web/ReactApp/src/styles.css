@@ -624,6 +624,13 @@ code {
   width: 100%;
 }
 
+.kb-form__error {
+  margin: 0;
+  color: var(--md-sys-color-error, #ba1a1a);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 @media (max-width: 640px) {
   .kb-board__columns {
     grid-auto-columns: minmax(240px, 82vw);

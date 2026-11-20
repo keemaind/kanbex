@@ -1,38 +1,62 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { BoardSummary } from '../../types/index.js'
-import {
-  createProjectSummary,
-  readProjects,
-  saveProjects,
-  type ProjectInput,
-} from './projectsStore.js'
+import type { BoardSummary, ProjectInput } from '../../types/index.js'
+import { createBoard, deleteBoard, fetchBoards } from '../../services/boardsApi.js'
 
 export interface UseProjectsResult {
   projects: BoardSummary[]
-  addProject: (input: ProjectInput) => BoardSummary
-  removeProject: (projectId: string) => void
+  loading: boolean
+  error: string | null
+  reload: () => Promise<void>
+  addProject: (input: ProjectInput) => Promise<BoardSummary>
+  removeProject: (projectId: string) => Promise<void>
 }
 
-/**
- * Состояние окна проектов. Пока данные хранятся в `sessionStorage` (каркас),
- * после подключения API хук будет вызывать `fetchBoards`/`createBoard`.
- */
 export function useProjects(): UseProjectsResult {
-  const [projects, setProjects] = useState<BoardSummary[]>(readProjects)
+  const [projects, setProjects] = useState<BoardSummary[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const reload = useCallback(async () => {
+    setLoading(true)
+    try {
+      const boards = await fetchBoards()
+      setProjects(boards.map((board) => ({
+        id: board.id,
+        title: board.title,
+        description: board.description,
+        taskCount: board.taskCount,
+        columnCount: board.columnCount,
+      })))
+      setError(null)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Не удалось загрузить проекты.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    saveProjects(projects)
-  }, [projects])
+    void reload()
+  }, [reload])
 
-  const addProject = useCallback((input: ProjectInput) => {
-    const project = createProjectSummary(input)
+  const addProject = useCallback(async (input: ProjectInput) => {
+    const board = await createBoard(input.title, input.description)
+    const project: BoardSummary = {
+      id: board.id,
+      title: board.title,
+      description: board.description,
+      columnCount: board.columns.length,
+      taskCount: board.columns.reduce((sum, column) => sum + column.tasks.length, 0),
+    }
     setProjects((current) => [project, ...current])
+    setError(null)
     return project
   }, [])
 
-  const removeProject = useCallback((projectId: string) => {
+  const removeProject = useCallback(async (projectId: string) => {
+    await deleteBoard(projectId)
     setProjects((current) => current.filter((project) => project.id !== projectId))
   }, [])
 
-  return { projects, addProject, removeProject }
+  return { projects, loading, error, reload, addProject, removeProject }
 }

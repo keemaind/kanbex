@@ -1,7 +1,7 @@
 /** DTO и UI-типы клиентского приложения Kanbex. */
 
 /** Приоритет карточки. */
-export type TaskPriority = 'low' | 'medium' | 'high'
+export type TaskPriority = 'low' | 'medium' | 'high' | 'critical'
 
 /** Карточка задачи на доске. */
 export interface TaskCard {
@@ -28,6 +28,8 @@ export interface Board {
   id: string
   title: string
   description: string
+  /** Версия проекта для optimistic concurrency при сохранении. */
+  version: number
   columns: BoardColumn[]
 }
 
@@ -51,6 +53,12 @@ export interface CurrentUser {
 export interface LoginRequest {
   email: string
   password: string
+}
+
+/** Данные формы создания проекта. */
+export interface ProjectInput {
+  title: string
+  description: string
 }
 
 /** Данные формы регистрации. */

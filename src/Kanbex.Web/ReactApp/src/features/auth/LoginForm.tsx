@@ -7,26 +7,30 @@ import type { LoginRequest } from '../../types/index.js'
 export interface LoginFormProps {
   onSubmit: (request: LoginRequest) => Promise<void>
   pending?: boolean
+  /** Ошибка сервера, полученная от `POST /api/auth/login`. */
+  error?: string | null
 }
 
 /** Форма входа. Валидирует поля на клиенте; сервер повторит проверки. */
-export function LoginForm({ onSubmit, pending = false }: LoginFormProps) {
+export function LoginForm({ onSubmit, pending = false, error = null }: LoginFormProps) {
   const [email, setEmail] = useState('student@kanbex.local')
-  const [password, setPassword] = useState('password123')
-  const [error, setError] = useState<string | null>(null)
+  const [password, setPassword] = useState('Student1')
+  const [fieldError, setFieldError] = useState<string | null>(null)
+
+  const message = fieldError ?? error
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!email.includes('@')) {
-      setError('Укажите корректный e-mail.')
+      setFieldError('Укажите корректный e-mail.')
       return
     }
     if (password.length < 6) {
-      setError('Пароль должен содержать минимум 6 символов.')
+      setFieldError('Пароль должен содержать минимум 6 символов.')
       return
     }
-    setError(null)
-    await onSubmit({ email, password })
+    setFieldError(null)
+    await onSubmit({ email: email.trim(), password })
   }
 
   return (
@@ -48,9 +52,13 @@ export function LoginForm({ onSubmit, pending = false }: LoginFormProps) {
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         required
-        error={Boolean(error)}
-        errorText={error ?? undefined}
+        error={Boolean(message)}
       />
+      {message ? (
+        <p className="kb-form__error" role="alert">
+          {message}
+        </p>
+      ) : null}
       <AppButton type="submit" variant="filled" size="md" disabled={pending} fullWidth>
         {pending ? 'Вход…' : 'Войти'}
       </AppButton>

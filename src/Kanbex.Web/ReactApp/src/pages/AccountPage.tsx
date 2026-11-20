@@ -29,8 +29,8 @@ export function AccountPage() {
         <div>
           <h1 className="kb-page__title">Учётная запись</h1>
           <p className="kb-page__lead">
-            Данные придут из <code>GET /api/auth/me</code>. Смена имени и пароля появится вместе
-            с Identity.
+            Данные получены из <code>GET /api/auth/me</code>. Смена имени и пароля появится
+            отдельным этапом.
           </p>
         </div>
         <StatusBadge tone="success" withDot>
@@ -55,7 +55,7 @@ export function AccountPage() {
         </div>
         <div className="kb-profile__row">
           <dt>Аутентификация</dt>
-          <dd>ASP.NET Core Identity — не подключена, используется демо-сессия.</dd>
+          <dd>ASP.NET Core Identity, cookie-сессия <code>Kanbex.Auth</code>.</dd>
         </div>
       </dl>
 
@@ -67,8 +67,7 @@ export function AccountPage() {
           variant="outlined"
           size="sm"
           onClick={() => {
-            logout()
-            navigate('/login')
+            void logout().then(() => navigate('/login', { replace: true }))
           }}
         >
           Выйти

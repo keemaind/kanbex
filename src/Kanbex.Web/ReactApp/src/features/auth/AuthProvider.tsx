@@ -1,75 +1,66 @@
-import { createContext, useCallback, useContext, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { CurrentUser, LoginRequest, RegisterRequest } from '../../types/index.js'
+import { fetchCurrentUser, login as loginRequest, logout as logoutRequest, register as registerRequest } from '../../services/authApi.js'
 
 /**
- * Контекст демонстрационной сессии. Пока Identity/API не подключены,
- * провайдер хранит пользователя в памяти и sessionStorage, повторяя форму
- * будущего контракта `/api/auth/*`.
+ * Контекст серверной cookie-сессии.
+ *
+ * При старте провайдер спрашивает `GET /api/auth/me`: пока ответ не получен,
+ * `initializing` равно `true`, поэтому guard не успевает перенаправить
+ * пользователя на `/login` раньше времени. Вход, регистрация и выход идут
+ * через `/api/auth/*`, а пользователь в состоянии — только безопасный DTO.
  */
 export interface AuthContextValue {
   user: CurrentUser | null
   isAuthenticated: boolean
-  /** `true`, пока идёт «запрос» к API. */
+  /** `true`, пока загружается текущая сессия при старте приложения. */
+  initializing: boolean
+  /** `true`, пока выполняется вход, регистрация или выход. */
   pending: boolean
   login: (request: LoginRequest) => Promise<void>
   register: (request: RegisterRequest) => Promise<void>
-  logout: () => void
-}
-
-const STORAGE_KEY = 'kanbex.demo.session'
-
-function createGuestUser(): CurrentUser {
-  return {
-    id: 'demo-user',
-    displayName: 'Гость-учащийся',
-    email: 'student@kanbex.local',
-  }
-}
-
-function readStoredUser(): CurrentUser | null {
-  if (typeof window === 'undefined') return null
-  try {
-    const raw = window.sessionStorage.getItem(STORAGE_KEY)
-    if (!raw) return createGuestUser()
-    const parsed = JSON.parse(raw) as CurrentUser
-    return parsed && typeof parsed.id === 'string' ? parsed : createGuestUser()
-  } catch {
-    return createGuestUser()
-  }
-}
-
-function persistUser(user: CurrentUser | null) {
-  if (typeof window === 'undefined') return
-  if (!user) {
-    window.sessionStorage.removeItem(STORAGE_KEY)
-    return
-  }
-  window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(user))
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // Демо-режим: гостевая сессия создаётся сразу, чтобы доска была доступна
-  // без серверной Identity. После выхода пользователь попадает на /login.
-  const [user, setUser] = useState<CurrentUser | null>(readStoredUser)
+  const [user, setUser] = useState<CurrentUser | null>(null)
+  const [initializing, setInitializing] = useState(true)
   const [pending, setPending] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const currentUser = await fetchCurrentUser()
+        if (!cancelled) {
+          setUser(currentUser)
+        }
+      } catch {
+        // Сеть или сервер недоступны — считаем сессию отсутствующей.
+        if (!cancelled) {
+          setUser(null)
+        }
+      } finally {
+        if (!cancelled) {
+          setInitializing(false)
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const login = useCallback(async (request: LoginRequest) => {
     setPending(true)
     try {
-      // TODO: заменить на POST /api/auth/login с cookie-сессией.
-      setUser({
-        id: 'demo-user',
-        displayName: request.email.split('@')[0] || 'Учащийся',
-        email: request.email,
-      })
-      persistUser({
-        id: 'demo-user',
-        displayName: request.email.split('@')[0] || 'Учащийся',
-        email: request.email,
-      })
+      const currentUser = await loginRequest(request)
+      setUser(currentUser)
     } finally {
       setPending(false)
     }
@@ -78,28 +69,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(async (request: RegisterRequest) => {
     setPending(true)
     try {
-      // TODO: заменить на POST /api/auth/register.
-      const nextUser: CurrentUser = {
-        id: 'demo-user',
-        displayName: request.displayName || 'Учащийся',
-        email: request.email,
-      }
-      setUser(nextUser)
-      persistUser(nextUser)
+      const currentUser = await registerRequest(request)
+      setUser(currentUser)
     } finally {
       setPending(false)
     }
   }, [])
 
-  const logout = useCallback(() => {
-    // TODO: заменить на POST /api/auth/logout.
-    setUser(null)
-    persistUser(null)
+  const logout = useCallback(async () => {
+    setPending(true)
+    try {
+      await logoutRequest()
+    } catch {
+      // Cookie могла истечь или сервер недоступен: локальное состояние всё
+      // равно очищается, чтобы пользователь вернулся на страницу входа.
+    } finally {
+      setUser(null)
+      setPending(false)
+    }
   }, [])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, isAuthenticated: user !== null, pending, login, register, logout }),
-    [user, pending, login, register, logout],
+    () => ({
+      user,
+      isAuthenticated: user !== null,
+      initializing,
+      pending,
+      login,
+      register,
+      logout,
+    }),
+    [user, initializing, pending, login, register, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

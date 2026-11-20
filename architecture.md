@@ -22,7 +22,7 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 
 ## 3. Структура решения и репозитория
 
-Структура решения включает `src/Kanbex.Web`, `src/Kanbex.Infrastructure`, `src/Kanbex.UI` и `Kanbex.sln`. Инфраструктурный проект содержит модель данных, конфигурации EF Core, Identity persistence и начальные миграции SQLite. Каркас уже содержит работающие MVC-хосты, React-страницы и переиспользуемые компоненты, демонстрационные данные и навигацию. API-контроллеры зарегистрированы как заглушки и возвращают `501 Not Implemented`; полноценная прикладная логика и сохранение через API выполняются на следующем этапе. Для frontend-проектов настроены ESLint и Jest, юнит-тесты библиотеки компонентов и тесты логики доски.
+Структура решения включает `src/Kanbex.Web`, `src/Kanbex.Infrastructure`, `src/Kanbex.UI` и `Kanbex.sln`. Инфраструктурный проект содержит модель данных, конфигурации EF Core, Identity persistence и начальные миграции SQLite. Приложение содержит работающие MVC-хосты, React-страницы, переиспользуемые компоненты и серверное хранение досок. API аутентификации реализован через ASP.NET Core Identity, cookie-сессию и antiforgery; API досок поддерживает CRUD и сброс учебной доски к начальному содержимому. Для frontend-проектов настроены ESLint и Jest, юнит-тесты библиотеки компонентов, тесты сессии и логики доски; серверные интеграционные тесты покрывают `/api/auth/*` и `/api/boards/*`.
 
 ```text
 /
@@ -37,10 +37,15 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 │   ├── Kanbex.Web/                         # MVC, HTTP API и React-хост
 │   │   ├── Controllers/
 │   │   │   ├── HomeController.cs           # MVC-страницы и Razor-хосты SPA
-│   │   │   ├── BoardPageController.cs      # MVC-хост React для доски
 │   │   │   └── Api/
-│   │   │       ├── AuthController.cs       # Заглушки API регистрации, входа и сессии
-│   │   │       └── BoardsController.cs     # Заглушки API досок, колонок и карточек
+│   │   │       ├── AuthController.cs       # Identity, cookie-сессия и antiforgery
+│   │   │       └── BoardsController.cs     # CRUD досок и сброс учебной доски
+│   │   ├── Contracts/
+│   │   │   ├── AuthContracts.cs            # DTO входа, регистрации и CurrentUser
+│   │   │   └── BoardContracts.cs           # DTO досок, колонок и карточек
+│   │   ├── Services/
+│   │   │   ├── BoardService.cs             # Бизнес-логика досок
+│   │   │   └── ApiAntiforgeryFilter.cs     # CSRF для изменяющих /api/*
 │   │   ├── Data/
 │   │   │   └── DatabaseSeeder.cs           # Роли и демонстрационный пользователь
 │   │   ├── Views/
@@ -89,31 +94,39 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 │   │   │   ├── ApplicationUser.cs            # Расширение IdentityUser
 │   │   │   └── IdentityRoleNames.cs           # Имена глобальных ролей
 │   │   └── Kanbex.Infrastructure.csproj
-│   └── Kanbex.UI/                            # библиотека общих React-компонентов
-│       ├── src/
-│       │   ├── components/
-│       │   │   ├── AppButton/                # компонент и unit-тест
-│       │   │   ├── AppDialog/                # компонент и unit-тест
-│       │   │   ├── AppHeader/                # компонент и unit-тест
-│       │   │   ├── EmptyState/               # компонент и unit-тест
-│       │   │   ├── KanbexLogo/               # логотип и unit-тест
-│       │   │   ├── LoadingState/             # компонент и unit-тест
-│       │   │   └── StatusBadge/              # компонент и unit-тест
-│       │   ├── styles/components.css          # токены --kb-color-* и стили компонентов
-│       │   ├── test/setup.tsx                # cleanup и mock m3-expressive-react
-│       │   ├── index.ts                      # публичные экспорты
-│       │   └── types.ts
-│       ├── package.json                      # пакет @kanbex/ui
-│       ├── tsconfig.json
-│       ├── jest.config.cjs
-│       ├── babel.config.cjs
-│       ├── eslint.config.js
-│       └── README.md
+│   ├── Kanbex.UI/                            # библиотека общих React-компонентов
+│   │   ├── src/
+│   │   │   ├── components/
+│   │   │   │   ├── AppButton/                # компонент и unit-тест
+│   │   │   │   ├── AppDialog/                # компонент и unit-тест
+│   │   │   │   ├── AppHeader/                # компонент и unit-тест
+│   │   │   │   ├── EmptyState/               # компонент и unit-тест
+│   │   │   │   ├── KanbexLogo/               # логотип и unit-тест
+│   │   │   │   ├── LoadingState/             # компонент и unit-тест
+│   │   │   │   └── StatusBadge/              # компонент и unit-тест
+│   │   │   ├── styles/components.css          # токены --kb-color-* и стили компонентов
+│   │   │   ├── test/setup.tsx                # cleanup и mock m3-expressive-react
+│   │   │   ├── index.ts                      # публичные экспорты
+│   │   │   └── types.ts
+│   │   ├── package.json                      # пакет @kanbex/ui
+│   │   ├── tsconfig.json
+│   │   ├── jest.config.cjs
+│   │   ├── babel.config.cjs
+│   │   ├── eslint.config.js
+│   │   └── README.md
+│   └── Kanbex.Tests/                         # xUnit-тесты
+│       ├── AuthApiTests.cs                   # Интеграционные тесты cookie-сессии и antiforgery
+│       ├── BoardApiTests.cs                  # CRUD досок, WIP, перенос карточек и сброс
+│       ├── BoardPersistenceTests.cs          # Сохранение досок через EF Core
+│       ├── SpaHostTests.cs                   # Razor-хосты клиентских маршрутов
+│       ├── KanbexApiFactory.cs               # TestServer с SQLite в памяти
+│       ├── ApiControllerTests.cs
+│       └── MigrationTests.cs
 ├── package.json                              # npm workspaces и общие команды
 └── package-lock.json
 ```
 
-`ReactApp` находится внутри `Kanbex.Web`, чтобы плагин `vite-dotnet` публиковал сборку в `wwwroot/ReactApp`. `Kanbex.UI` является отдельным npm workspace-пакетом. `Kanbex.Infrastructure` — отдельный .NET-проект, на который ссылается `Kanbex.Web`; в нём уже реализованы модель данных, конфигурации EF Core и миграции.
+`ReactApp` находится внутри `Kanbex.Web`, чтобы плагин `vite-dotnet` публиковал сборку в `wwwroot/ReactApp`. `Kanbex.UI` является отдельным npm workspace-пакетом. `Kanbex.Infrastructure` — отдельный .NET-проект, на который ссылается `Kanbex.Web`; в нём уже реализованы модель данных, конфигурации EF Core и миграции. `Kanbex.Tests` — xUnit-проект с тестами миграций и интеграционными тестами API на `WebApplicationFactory`.
 
 ## 4. Проекты и ответственность
 
@@ -131,16 +144,16 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 Основные страницы и клиентские компоненты каркаса:
 
 - `HomeController` / `Home/Index.cshtml` и `Home/Error.cshtml` — MVC-хост и страница ошибки.
-- `BoardPageController` — Razor-хост React для `/board` и `/boards`.
+- `HomeController.BoardSpa` — Razor-хост React для `/board` и `/boards`, включая вложенные клиентские маршруты.
 - `LoginPage`, `RegisterPage`, `BoardsPage`, `BoardPage`, `AccountPage`, `NotFoundPage` — клиентские страницы.
 - `App`, `AppRouter`, `AppLayout`, `RequireAuth` — корень SPA, маршруты, общая оболочка и клиентский guard.
-- `LoginForm`, `RegisterForm`, `AuthProvider` — демонстрационная сессия и формы входа/регистрации.
+- `LoginForm`, `RegisterForm`, `AuthProvider` — формы входа/регистрации и состояние серверной cookie-сессии.
 - `ProjectCard`, `ProjectCreateDialog`, `KanbanBoard`, `BoardColumn`, `TaskCard`, `LearningTips` — компоненты доменной области.
-- `services/authApi.ts` и `services/boardsApi.ts` — типизированные заготовки HTTP-клиентов; методы намеренно возвращают ошибку «API ещё не подключён».
-- `features/boards/boardLogic.ts` и `pluralize.ts` — чистые функции WIP-проверок, перемещения и подписей; покрыты тестами.
-- `features/auth/AuthProvider.tsx` использует `sessionStorage` как демонстрационный источник сессии; после подключения Identity он будет заменён вызовами `/api/auth/*`.
+- `services/authApi.ts` и `services/boardsApi.ts` — типизированные HTTP-клиенты `/api/auth/*` и `/api/boards/*` с same-origin cookie, antiforgery и разбором `ProblemDetails`.
+- `features/boards/boardLogic.ts` и `pluralize.ts` — чистые функции WIP-проверок, перемещения и подписей; покрыты тестами. `useProjects` загружает список и выполняет создание/удаление через API, `useBoard` загружает доску и сохраняет её полной заменой.
+- `features/auth/AuthProvider.tsx` загружает текущего пользователя через `GET /api/auth/me`, хранит `initializing`/`pending` и вызывает `/api/auth/*` для входа, регистрации и выхода.
 
-`HomeController` также обслуживает прямые переходы на клиентские маршруты `/login`, `/register`, `/account`, `/boards/*` и `/board/*`, чтобы `BrowserRouter` не получал 404 от сервера.
+`HomeController` также обслуживает прямые переходы на клиентские маршруты `/login`, `/register`, `/account`, `/boards/*` и `/board/*`, чтобы `BrowserRouter` не получал 404 от сервера. Для остальных URL без расширения работает fallback на Razor-хост SPA, поэтому прямой заход на неизвестный адрес показывает клиентскую `NotFoundPage`; `/api/*` при этом по-прежнему возвращает `404`.
 
 ### 4.2. Kanbex.Infrastructure — EF Core и Identity persistence
 
@@ -189,12 +202,35 @@ API размещается в `Kanbex.Web` под префиксом `/api`. Web
 | `POST /api/auth/logout` | Аутентифицированный | Завершить сессию; учитывать защиту от CSRF. |
 | `GET /api/auth/me` | Аутентифицированный | Получить безопасный DTO текущего пользователя. |
 | `GET /api/boards` | Аутентифицированный | Получить только доски текущего пользователя. |
-| `POST /api/boards` | Аутентифицированный | Создать личную доску с начальными колонками/демо-данными. |
+| `POST /api/boards` | Аутентифицированный | Создать личную доску с тремя начальными колонками и демонстрационными карточками. |
 | `GET /api/boards/{boardId}` | Аутентифицированный + владелец | Получить доску, колонки и карточки. |
 | `PUT /api/boards/{boardId}` | Аутентифицированный + владелец | Сохранить изменения; сервер проверяет WIP-правила. |
+| `POST /api/boards/{boardId}/reset` | Аутентифицированный + владелец | Сбросить доску к начальному учебному содержимому. |
 | `DELETE /api/boards/{boardId}` | Аутентифицированный + владелец | Удалить доску, если это действие включено в согласованный MVP. |
 
-Для cookie-аутентификации React и API работают на одном origin. Изменяющие состояние запросы защищаются от CSRF, например antiforgery-токеном и настройкой cookie. CORS не включается без необходимости. API не возвращает хэши паролей или другие секреты Identity. Точные DTO, коды ошибок и правила конфликтов определяются при реализации.
+Для cookie-аутентификации React и API работают на одном origin. Изменяющие состояние запросы защищаются от CSRF, например antiforgery-токеном и настройкой cookie. CORS не включается без необходимости. API не возвращает хэши паролей или другие секреты Identity.
+
+### 5.1. Контракт API
+
+Контракт ниже является действующим для API аутентификации и досок. Маршруты `/api/auth/*` и CRUD `/api/boards/*` реализованы и покрыты интеграционными тестами. JSON использует `camelCase`, enum-приоритеты — строки `low`, `medium`, `high`, `critical`, идентификаторы досок и колонок — GUID. Ошибки возвращаются в формате `ProblemDetails` с необязательным расширением `errors` для ошибок полей.
+
+| Метод и маршрут | Запрос | Успешный ответ | Основные ошибки |
+|---|---|---|---|
+| `GET /api/auth/antiforgery-token` | — | `200 { requestToken }`; также устанавливается antiforgery-cookie | — |
+| `POST /api/auth/register` | `{ displayName, email, password }` | `201 CurrentUser`; установить cookie-сессию | `400` ошибки полей, `409` email занят |
+| `POST /api/auth/login` | `{ email, password }` | `200 CurrentUser`; установить cookie-сессию | `400` неверный формат, `401` неверные учётные данные |
+| `POST /api/auth/logout` | antiforgery-заголовок | `204`; удалить cookie-сессию | `401` нет сессии, `400` неверный antiforgery-токен |
+| `GET /api/auth/me` | — | `200 CurrentUser` | `401` нет сессии |
+| `GET /api/boards` | — | `200 BoardSummary[]` | `401` нет сессии |
+| `POST /api/boards` | `{ title, description }` | `201 Board`; `Location: /api/boards/{id}` | `400` ошибки полей, `401` нет сессии |
+| `GET /api/boards/{boardId}` | — | `200 Board` | `401` нет сессии, `404` не найдена или недоступна |
+| `PUT /api/boards/{boardId}` | `{ title, description, version, columns }` | `200 Board`; новая версия включена в ответ | `400` ошибки полей, `401` нет сессии, `404` не найдена или недоступна, `409` WIP/конфликт версии |
+| `POST /api/boards/{boardId}/reset` | antiforgery-заголовок | `200 Board`; начальные колонки, карточки и новая версия | `401` нет сессии, `404` не найдена или недоступна |
+| `DELETE /api/boards/{boardId}` | antiforgery-заголовок | `204` | `401` нет сессии, `404` не найдена или недоступна |
+
+`CurrentUser` соответствует `src/types/index.ts`: `{ id, displayName, email }`. `BoardSummary` содержит `{ id, title, description, taskCount, columnCount }`. `Board` содержит `{ id, title, description, version, columns }`; колонка — `{ id, title, wipLimit, order, tasks }`, карточка — `{ id, title, description, priority, order }`. Доска создаётся с тремя начальными колонками и демонстрационными карточками; список упорядочен по `UpdatedAt DESC`. В `PUT` сервер принимает целое `version` из `Project.Version`; при несовпадении версии или превышении WIP возвращает `409 ProblemDetails`. `PUT` является полной заменой списка колонок и карточек доски в одной транзакции: колонки и карточки можно добавлять, переименовывать, переставлять и удалять. Идентификаторы сохраняемых сущностей сохраняют связи и комментарии; история сохраняется, кроме записей, ссылающихся на удаляемую колонку. Порядок колонок и задач должен быть непрерывным с нуля. `POST /api/boards/{boardId}/reset` заменяет колонки и карточки начальным учебным набором, удаляет пользовательские карточки вместе с комментариями и увеличивает версию. Владелец доски определяется только из аутентифицированной сессии; доступ участников пока не включён. Чужие и отсутствующие доски возвращают одинаковый `404`. `401` и `403` для `/api/*` возвращаются статусами без HTML-редиректа.
+
+Все изменяющие запросы под `/api/*` проверяются общим `ApiAntiforgeryFilter`. Клиент получает request token и передаёт его в `X-CSRF-TOKEN`; cookie-аутентификация остаётся same-origin. Для анонимных `register` и `login` также обязателен antiforgery-токен. Токен привязан к текущей identity, поэтому после входа или регистрации клиент получает новый токен. DTO и коды ответов покрыты интеграционными тестами `src/Kanbex.Tests/AuthApiTests.cs` и `BoardApiTests.cs`.
 
 ## 6. Интеграция React, Razor и Vite
 
@@ -241,8 +277,8 @@ API размещается в `Kanbex.Web` под префиксом `/api`. Web
 | `@eslint/js` | 9.39.5 | `ReactApp`, `Kanbex.UI` | Базовые правила ESLint. |
 | `typescript-eslint` | 8.73.0 | `ReactApp`, `Kanbex.UI` | TypeScript-парсер и правила ESLint. |
 | `globals` | 17.14.0 | `ReactApp`, `Kanbex.UI` | Наборы глобальных переменных для ESLint. |
-| xUnit | актуальная стабильная версия на момент реализации | `tests/` | Unit- и интеграционные тесты .NET-проектов. |
-| `Microsoft.AspNetCore.Mvc.Testing` | 10.0.x | `Kanbex.Web.Tests` | Интеграционное тестирование MVC/API с тестовым хостом. |
+| xUnit | актуальная стабильная версия на момент реализации | `src/Kanbex.Tests` | Unit- и интеграционные тесты .NET-проектов. |
+| `Microsoft.AspNetCore.Mvc.Testing` | 10.0.x | `Kanbex.Tests` | Интеграционное тестирование MVC/API с тестовым хостом. |
 
 `Kanbex.UI` использует React и `m3-expressive-react` как peer/workspace-зависимости, чтобы не включать дубли React. Конфигурация peer dependencies зафиксирована в `src/Kanbex.UI/package.json`.
 
@@ -253,12 +289,13 @@ API размещается в `Kanbex.Web` под префиксом `/api`. Web
 | URL | MVC-действие | Назначение | Доступ |
 |---|---|---|---|
 | `/` | `HomeController.Index` | Вводная страница и переход к симулятору. | Открытый |
-| `/boards` | `BoardPageController.Index` | Razor-хост React для списка проектов. | Клиентский guard; в MVP — аутентифицированный. |
-| `/board` | `BoardPageController.Index` | Алиас Razor-хоста для обратной совместимости. | Клиентский guard; в MVP — аутентифицированный. |
-| `/boards/{boardId:guid}` | `BoardPageController.Details` | Хост доски; идентификатор передаётся React и API. | Клиентский guard; владелец проверяется сервером в MVP. |
-| `/board/{boardId:guid}` | `BoardPageController.Details` | Алиас хоста доски. | Клиентский guard; владелец проверяется сервером в MVP. |
+| `/boards` | `HomeController.BoardSpa` | Razor-хост React для списка проектов. | Клиентский guard; в MVP — аутентифицированный. |
+| `/board` | `HomeController.BoardSpa` | Алиас Razor-хоста для обратной совместимости. | Клиентский guard; в MVP — аутентифицированный. |
+| `/boards/{boardId:guid}` | `HomeController.BoardSpa` | Хост доски; идентификатор передаётся React и API. | Клиентский guard; владелец проверяется сервером в MVP. |
+| `/board/{boardId:guid}` | `HomeController.BoardSpa` | Алиас хоста доски. | Клиентский guard; владелец проверяется сервером в MVP. |
 | `/boards/{**rest}` | `HomeController.BoardSpa` | Прямое открытие вложенного клиентского URL без 404. | Открытый хост; данные защищает API. |
 | `/board/{**rest}` | `HomeController.BoardSpa` | Прямое открытие вложенного клиентского URL без 404. | Открытый хост; данные защищает API. |
+| любой URL без расширения | `HomeController.SpaFallback` | Хост SPA для неизвестного клиентского адреса; `/api/*` получает `404`. | Открытый хост. |
 | `/login` | `HomeController.Spa` | Хост страницы входа React. | Открытый |
 | `/register` | `HomeController.Spa` | Хост страницы регистрации React. | Открытый |
 | `/account` | `HomeController.Spa` | Хост профиля пользователя. | Клиентский guard; в MVP — `[Authorize]`. |
@@ -287,7 +324,7 @@ RequireAuth + AppLayout
 *                         -> NotFoundPage
 ```
 
-`RequireAuth` перенаправляет неаутентифицированного пользователя на `/login` и сохраняет исходный путь в `state.from`. `boardId` проверяется по формату GUID на клиенте; авторитетный ответ о существовании и доступе возвращает Web API. Клиентский guard нужен для навигации, но не заменяет серверную авторизацию. В каркасе используется демонстрационная сессия из `sessionStorage`; при подключении Identity guard будет работать с `GET /api/auth/me`.
+`RequireAuth` перенаправляет неаутентифицированного пользователя на `/login` и сохраняет исходный путь в `state.from`. `boardId` проверяется по формату GUID на клиенте; авторитетный ответ о существовании и доступе возвращает Web API. Клиентский guard нужен для навигации, но не заменяет серверную авторизацию. `AuthProvider` при старте вызывает `GET /api/auth/me`; пока ответ не получен, `RequireAuth` показывает состояние загрузки и не выполняет редирект.
 
 При прямом открытии URL ASP.NET Core возвращает Razor-хост для клиентского маршрута. Все операции чтения/записи независимо защищены API.
 

@@ -21,12 +21,14 @@ const priorityLabels: Record<TaskPriority, string> = {
   low: 'Низкий приоритет',
   medium: 'Средний приоритет',
   high: 'Высокий приоритет',
+  critical: 'Критический приоритет',
 }
 
 const priorityTones: Record<TaskPriority, BadgeTone> = {
   low: 'neutral',
   medium: 'info',
   high: 'warning',
+  critical: 'danger',
 }
 
 /**

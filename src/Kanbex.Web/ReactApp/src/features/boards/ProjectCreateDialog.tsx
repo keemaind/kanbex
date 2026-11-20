@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { TextField } from 'm3-expressive-react'
 import { AppDialog } from '@kanbex/ui'
-import type { ProjectInput } from './projectsStore.js'
+import type { ProjectInput } from '../../types/index.js'
 
 export interface ProjectCreateDialogProps {
   onCreate: (input: ProjectInput) => void
@@ -35,7 +35,7 @@ export function ProjectCreateDialog({ onCreate, onCancel }: ProjectCreateDialogP
     <AppDialog
       open
       title="Новый проект"
-      description="Проект — это отдельная Kanban-доска. В нём появятся колонки «К выполнению», «В работе» и «Готово»."
+      description="Проект — это отдельная Kanban-доска с колонками «К выполнению», «В работе» и «Готово» и демонстрационными карточками."
       confirmLabel="Создать проект"
       onConfirm={() => handleSubmit()}
       onCancel={onCancel}

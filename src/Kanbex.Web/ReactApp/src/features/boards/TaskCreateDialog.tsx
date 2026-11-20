@@ -16,6 +16,7 @@ const priorities: Array<{ value: TaskPriority; label: string }> = [
   { value: 'low', label: 'Низкий' },
   { value: 'medium', label: 'Средний' },
   { value: 'high', label: 'Высокий' },
+  { value: 'critical', label: 'Критический' },
 ]
 
 /**

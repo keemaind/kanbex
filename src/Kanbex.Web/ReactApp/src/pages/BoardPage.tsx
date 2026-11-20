@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { AppButton, AppDialog, EmptyState, LoadingState, StatusBadge } from '@kanbex/ui'
-import { demoBoard, demoLearningTips, getBoardForProject, KanbanBoard, TaskCreateDialog, useBoard } from '../features/boards/index.js'
+import { KanbanBoard, learningTips, TaskCreateDialog, useBoard } from '../features/boards/index.js'
 import type { NewTaskInput } from '../features/boards/index.js'
 import { LearningTips } from '../features/learning/index.js'
 import type { TaskCard as TaskCardModel } from '../types/index.js'
@@ -12,22 +12,20 @@ const priorityLabels: Record<TaskCardModel['priority'], string> = {
   low: 'Низкий',
   medium: 'Средний',
   high: 'Высокий',
+  critical: 'Критический',
 }
 
 /**
  * Представление доски: канбан-колонки и обучающие подсказки.
- * `boardId` проверяется по формату GUID; существование и доступ
- * подтвердит сервер при подключении API.
+ * Идентификатор, существование и доступ проверяются API.
  */
 export function BoardPage() {
   const { boardId = '' } = useParams()
   const navigate = useNavigate()
-  // Доска берётся из списка проектов; для созданных на клиенте проектов
-  // собирается пустая стартовая доска с теми же тремя этапами.
-  const initialBoard = useMemo(() => getBoardForProject(boardId), [boardId])
-  const { board, lastMove, moveTask, addTask, resetBoard } = useBoard(initialBoard ?? demoBoard)
+  const { board, loading, error, saving, lastMove, moveTask, addTask, reset, save } = useBoard(boardId)
   const [activeTask, setActiveTask] = useState<TaskCardModel | null>(null)
   const [createColumnId, setCreateColumnId] = useState<string | null>(null)
+  const [resetOpen, setResetOpen] = useState(false)
   const [notice, setNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null)
 
   if (!boardIdPattern.test(boardId)) {
@@ -45,23 +43,27 @@ export function BoardPage() {
     )
   }
 
-  if (!initialBoard) {
+  if (loading) {
+    return <BoardPageLoading />
+  }
+
+  if (error && !board) {
     return (
       <div className="kb-page">
         <EmptyState
-          title="Проект не найден"
-          description="Возможно, проект был удалён или ссылка устарела. Вернитесь к списку и выберите существующий проект."
+          title="Доска не найдена"
+          description={error}
           actionLabel="К списку проектов"
-          onAction={() => {
-            navigate('/boards')
-          }}
+          onAction={() => navigate('/boards')}
         />
       </div>
     )
   }
 
+  if (!board) return null
+
   const wipRejection = lastMove?.rejection === 'wip-limit'
-  const createColumn = createColumnId
+  const createColumn = createColumnId && board
     ? board.columns.find((column) => column.id === createColumnId) ?? null
     : null
 
@@ -70,6 +72,7 @@ export function BoardPage() {
 
     const result = addTask(createColumnId, input)
     setCreateColumnId(null)
+    if (!result) return
 
     if (result.rejection === 'wip-limit') {
       setNotice({ tone: 'danger', text: 'Задача не добавлена: в колонке достигнут WIP-лимит.' })
@@ -97,20 +100,12 @@ export function BoardPage() {
           <p className="kb-page__lead">{board.description}</p>
         </div>
         <div className="kb-page__actions">
-          {boardId === demoBoard.id ? (
-            <AppButton
-              variant="outlined"
-              size="sm"
-              onClick={() => {
-                resetBoard(demoBoard)
-                setNotice(null)
-                setCreateColumnId(null)
-              }}
-              aria-label="Вернуть демонстрационную доску в исходное состояние"
-            >
-              Сбросить демо
-            </AppButton>
-          ) : null}
+          <AppButton variant="outlined" size="sm" disabled={saving} onClick={() => setResetOpen(true)}>
+            Сбросить доску
+          </AppButton>
+          <AppButton variant="filled" size="sm" disabled={saving} onClick={() => void save().catch(() => undefined)}>
+            {saving ? 'Сохраняем…' : 'Сохранить'}
+          </AppButton>
         </div>
       </div>
 
@@ -124,9 +119,10 @@ export function BoardPage() {
           onOpenTask={(task) => setActiveTask(task)}
           onCreateTask={(columnId) => setCreateColumnId(columnId)}
         />
-        <LearningTips tips={demoLearningTips} />
+        <LearningTips tips={learningTips} />
       </div>
 
+      {error ? <StatusBadge tone="danger" withDot>{error}</StatusBadge> : null}
       <div className="kb-board__feedback" role="status" aria-live="polite">
         {notice ? (
           <StatusBadge tone={notice.tone} withDot>
@@ -142,7 +138,7 @@ export function BoardPage() {
           </StatusBadge>
         ) : (
           <span className="kb-board__feedback-idle">
-            Изменения хранятся локально до подключения PUT /api/boards/{'{boardId}'}.
+            Изменения находятся в памяти страницы; нажмите «Сохранить», чтобы отправить их на сервер.
           </span>
         )}
       </div>
@@ -169,6 +165,22 @@ export function BoardPage() {
           </dl>
         ) : null}
       </AppDialog>
+
+      <AppDialog
+        open={resetOpen}
+        title="Сбросить доску?"
+        description="Все карточки и изменения будут заменены начальным учебным набором. Отменить это действие нельзя."
+        confirmLabel="Сбросить"
+        onConfirm={() => {
+          setResetOpen(false)
+          void reset()
+            .then(() => setNotice({ tone: 'success', text: 'Доска восстановлена в начальном состоянии.' }))
+            .catch((cause: unknown) => {
+              setNotice({ tone: 'danger', text: cause instanceof Error ? cause.message : 'Не удалось сбросить доску.' })
+            })
+        }}
+        onCancel={() => setResetOpen(false)}
+      />
 
       {createColumn ? (
         <TaskCreateDialog

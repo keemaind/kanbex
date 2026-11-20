@@ -1,8 +1,13 @@
 using Kanbex.Infrastructure.Identity;
 using Kanbex.Infrastructure.Persistence;
 using Kanbex.Web.Data;
+using Kanbex.Web.Services;
+using Kanbex.Infrastructure.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using ViteDotNet;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -73,7 +78,11 @@ builder.Services.AddAntiforgery(options =>
     options.Cookie.Name = "Kanbex.Antiforgery";
 });
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddScoped<BoardService>();
+builder.Services.AddScoped<ApiAntiforgeryFilter>();
+builder.Services.AddControllersWithViews(options => options.Filters.AddService<ApiAntiforgeryFilter>())
+    .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(
+        new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
 builder.Services.AddAuthorization();
 builder.Services.AddViteIntegration(builder.Configuration);
 
@@ -111,6 +120,10 @@ app.MapControllerRoute(
     pattern: "{controller=Home}/{action=Index}/{id?}")
     .WithStaticAssets();
 
+// Последний маршрут: неизвестный URL без расширения отдаёт Razor-хост SPA,
+// чтобы прямые ссылки на клиентские страницы не превращались в серверный 404.
+app.MapFallbackToController("SpaFallback", "Home");
+
 
 app.Run();
 
@@ -128,3 +141,7 @@ static async Task PrepareDatabaseAsync(WebApplication app)
         seedDemoUser: app.Configuration.GetValue("SeedDemoUser", true),
         logger);
 }
+
+// Нужен интеграционным тестам: WebApplicationFactory<Program> находит хост
+// по точке входа приложения.
+public partial class Program;

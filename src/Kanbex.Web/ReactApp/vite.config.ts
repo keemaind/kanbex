@@ -9,4 +9,14 @@ export default defineConfig({
     react(),
     ViteDotNetPlugin('src/main.tsx', 'root'),
   ],
+  server: {
+    // При открытии приложения на Vite (5173) запросы `/api/*` должны попадать
+    // в ASP.NET Core. На хосте 5130 прокси не используется.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5130',
+        changeOrigin: false,
+      },
+    },
+  },
 })

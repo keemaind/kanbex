@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kanbex.Web", "src\Kanbex.We
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kanbex.Infrastructure", "src\Kanbex.Infrastructure\Kanbex.Infrastructure.csproj", "{70613809-5662-4459-9C7F-FED3ADBCA30F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kanbex.Tests", "src\Kanbex.Tests\Kanbex.Tests.csproj", "{349DF024-5B30-4328-8CD4-091B6950BFC8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,6 +45,10 @@ Global
 		{70613809-5662-4459-9C7F-FED3ADBCA30F}.Release|x64.Build.0 = Release|Any CPU
 		{70613809-5662-4459-9C7F-FED3ADBCA30F}.Release|x86.ActiveCfg = Release|Any CPU
 		{70613809-5662-4459-9C7F-FED3ADBCA30F}.Release|x86.Build.0 = Release|Any CPU
+		{349DF024-5B30-4328-8CD4-091B6950BFC8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{349DF024-5B30-4328-8CD4-091B6950BFC8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{349DF024-5B30-4328-8CD4-091B6950BFC8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{349DF024-5B30-4328-8CD4-091B6950BFC8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

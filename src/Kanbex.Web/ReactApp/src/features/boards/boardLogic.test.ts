@@ -28,6 +28,7 @@ function board(): Board {
     id: 'board-1',
     title: 'Доска',
     description: 'Описание',
+    version: 0,
     columns: [
       column('todo', 0, [task('a'), task('b', 1)]),
       column('progress', 1, [task('c')], 1),

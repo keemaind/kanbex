@@ -8,14 +8,6 @@ export { TaskCreateDialog, type TaskCreateDialogProps } from './TaskCreateDialog
 export { useProjects, type UseProjectsResult } from './useProjects.js'
 export { pluralize, type PluralForms } from './pluralize.js'
 export {
-  createProjectSummary,
-  createStarterBoard,
-  getBoardForProject,
-  readProjects,
-  saveProjects,
-  type ProjectInput,
-} from './projectsStore.js'
-export {
   addTaskToColumn,
   canAcceptTask,
   getNextColumn,
@@ -26,4 +18,4 @@ export {
   type MoveTaskResult,
   type NewTaskInput,
 } from './boardLogic.js'
-export { demoBoard, demoBoardSummaries, demoLearningTips, demoUser } from './demoData.js'
+export { learningTips } from './learningTips.js'
