@@ -1,3 +1,5 @@
+@import 'm3-expressive-react/styles.css';
+
 /* Стили библиотеки @kanbex/ui.
    Используют токены --md-sys-color-* из m3-expressive-react, поэтому
    библиотека наследует тему ThemeProvider. Фирменная палитра взята

@@ -30,12 +30,17 @@ export function canAcceptTask(column: BoardColumn): boolean {
   return column.wipLimit === null || column.tasks.length < column.wipLimit
 }
 
-function createTaskId(): string {
+/** Генерирует идентификатор для новых карточек и колонок. */
+export function createId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID()
   }
 
-  return `task-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+  return `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+function createTaskId(): string {
+  return createId()
 }
 
 /**
@@ -145,4 +150,66 @@ export function getPreviousColumn(board: Board, columnId: string): BoardColumn |
   const ordered = [...board.columns].sort((a, b) => a.order - b.order)
   const index = ordered.findIndex((column) => column.id === columnId)
   return index > 0 ? ordered[index - 1] : undefined
+}
+
+/** Обновляет поля карточки, сохраняя её позицию и колонку. */
+export function updateTaskInBoard(
+  board: Board,
+  taskId: string,
+  patch: Partial<Pick<TaskCard, 'title' | 'description' | 'priority'>>,
+): Board | null {
+  const owner = board.columns.find((column) => column.tasks.some((task) => task.id === taskId))
+  if (!owner) return null
+
+  return {
+    ...board,
+    columns: board.columns.map((column) =>
+      column.id === owner.id
+        ? {
+          ...column,
+          tasks: column.tasks.map((task) => (task.id === taskId ? { ...task, ...patch } : task)),
+        }
+        : column,
+    ),
+  }
+}
+
+export interface DeleteTaskResult {
+  board: Board
+  deleted: boolean
+}
+
+/** Удаляет карточку и пересчитывает порядок оставшихся в колонке. */
+export function deleteTaskFromBoard(board: Board, taskId: string): DeleteTaskResult {
+  const owner = board.columns.find((column) => column.tasks.some((task) => task.id === taskId))
+  if (!owner) return { board, deleted: false }
+
+  return {
+    board: {
+      ...board,
+      columns: board.columns.map((column) =>
+        column.id === owner.id
+          ? {
+            ...column,
+            tasks: column.tasks
+              .filter((task) => task.id !== taskId)
+              .map((task, order) => ({ ...task, order })),
+          }
+          : column,
+      ),
+    },
+    deleted: true,
+  }
+}
+
+/** Приводит порядок колонок к непрерывной последовательности с нуля. */
+export function normalizeColumns(columns: BoardColumn[]): BoardColumn[] {
+  return [...columns]
+    .sort((left, right) => left.order - right.order)
+    .map((column, order) => ({ ...column, order }))
+}
+
+/** Заменяет набор колонок доски, сохраняя карточки переданных колонок. */
+export function replaceColumnsInBoard(board: Board, columns: BoardColumn[]): Board {
+  return { ...board, columns: normalizeColumns(columns) }
 }

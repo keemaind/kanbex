@@ -52,7 +52,12 @@ public sealed class BoardApiTests : IClassFixture<KanbexApiFactory>
         var listResponse = await client.GetAsync("/api/boards");
         Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
         var listJson = await listResponse.Content.ReadFromJsonAsync<List<BoardSummaryResponse>>();
-        Assert.Contains(listJson!, board => board.Id == created.Id && board.ColumnCount == 3);
+        Assert.Contains(listJson!, board =>
+            board.Id == created.Id &&
+            board.ColumnCount == 3 &&
+            board.TaskCount == 6 &&
+            board.CompletedTaskCount == 1 &&
+            board.UpdatedAt != default);
 
         var detailsResponse = await client.GetAsync($"/api/boards/{created.Id}");
         Assert.Equal(HttpStatusCode.OK, detailsResponse.StatusCode);

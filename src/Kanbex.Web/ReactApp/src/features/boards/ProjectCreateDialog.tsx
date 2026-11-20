@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { TextField } from 'm3-expressive-react'
-import { AppDialog } from '@kanbex/ui'
+import { AppDialog, AppTextField } from '@kanbex/ui'
 import type { ProjectInput } from '../../types/index.js'
 
 export interface ProjectCreateDialogProps {
@@ -41,7 +40,7 @@ export function ProjectCreateDialog({ onCreate, onCancel }: ProjectCreateDialogP
       onCancel={onCancel}
     >
       <form className="kb-form" onSubmit={handleSubmit}>
-        <TextField
+        <AppTextField
           label="Название проекта"
           name="projectTitle"
           value={title}
@@ -56,7 +55,7 @@ export function ProjectCreateDialog({ onCreate, onCancel }: ProjectCreateDialogP
           required
           inputProps={{ autoFocus: true }}
         />
-        <TextField
+        <AppTextField
           label="Описание"
           name="projectDescription"
           value={description}

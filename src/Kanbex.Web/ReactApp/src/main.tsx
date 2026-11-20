@@ -1,7 +1,6 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './app/App.js'
-import 'm3-expressive-react/styles.css'
 import '@kanbex/ui/styles.css'
 import './styles.css'
 

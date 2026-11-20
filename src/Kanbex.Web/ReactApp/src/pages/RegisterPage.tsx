@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { AppHeader, KanbexLogo } from '@kanbex/ui'
+import { KanbexLogo } from '@kanbex/ui'
 import { RegisterForm, useAuth } from '../features/auth/index.js'
 import { describeApiError } from '../services/api.js'
 import type { RegisterRequest } from '../types/index.js'
@@ -18,7 +18,7 @@ export function RegisterPage() {
     setError(null)
     try {
       await register(request)
-      navigate('/boards', { replace: true })
+      navigate('/home', { replace: true })
     } catch (submitError) {
       setError(describeApiError(submitError))
     }
@@ -26,9 +26,11 @@ export function RegisterPage() {
 
   return (
     <div className="kb-auth-page">
-      <AppHeader subtitle="Тренажёр Kanban-потока" logo={<KanbexLogo height={30} />} />
       <main className="kb-auth">
         <div className="kb-auth__card">
+          <div className="kb-auth__brand">
+            <KanbexLogo height={30} />
+          </div>
           <h1 className="kb-auth__title">Регистрация</h1>
           <p className="kb-auth__lead">
             Создайте аккаунт Kanbex. Пароль — не короче шести символов, с цифрой и строчной буквой.

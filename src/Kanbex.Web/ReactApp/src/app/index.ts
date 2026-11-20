@@ -1,3 +1,3 @@
 export { App } from './App.js'
-export { AppLayout } from './AppLayout.js'
+export { MainMenuLayout } from './MainMenuLayout.js'
 export { RequireAuth } from './RequireAuth.js'

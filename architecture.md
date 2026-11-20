@@ -60,8 +60,7 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 │   │   │   │   ├── pages/                   # страницы клиентского приложения
 │   │   │   │   ├── features/
 │   │   │   │   │   ├── auth/                # формы Identity и состояние сессии
-│   │   │   │   │   ├── boards/              # доски, WIP, тесты логики
-│   │   │   │   │   └── learning/            # обучающие подсказки
+│   │   │   │   │   └── boards/              # доски, WIP, тесты логики
 │   │   │   │   ├── routes/                  # React Router
 │   │   │   │   ├── services/                # типизированные HTTP API-клиенты
 │   │   │   │   ├── types/                   # DTO и UI-типы
@@ -145,10 +144,11 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 
 - `HomeController` / `Home/Index.cshtml` и `Home/Error.cshtml` — MVC-хост и страница ошибки.
 - `HomeController.BoardSpa` — Razor-хост React для `/board` и `/boards`, включая вложенные клиентские маршруты.
-- `LoginPage`, `RegisterPage`, `BoardsPage`, `BoardPage`, `AccountPage`, `NotFoundPage` — клиентские страницы.
-- `App`, `AppRouter`, `AppLayout`, `RequireAuth` — корень SPA, маршруты, общая оболочка и клиентский guard.
+- `LoginPage`, `RegisterPage`, `HomePage`, `AboutPage`, `BoardsPage`, `BoardPage`, `AccountPage`, `NotFoundPage` — клиентские страницы.
+- `MainMenuLayout` — dismissible-меню на `NavigationDrawer` с кнопкой Toggle Sidebar для главного экрана, проектов, доски, «О нас» и настроек.
+- `App`, `AppRouter`, `MainMenuLayout`, `RequireAuth` — корень SPA, маршруты, общая оболочка и клиентский guard.
 - `LoginForm`, `RegisterForm`, `AuthProvider` — формы входа/регистрации и состояние серверной cookie-сессии.
-- `ProjectCard`, `ProjectCreateDialog`, `KanbanBoard`, `BoardColumn`, `TaskCard`, `LearningTips` — компоненты доменной области.
+- `ProjectRow`, `ProjectCreateDialog`, `KanbanBoard`, `BoardColumn`, `TaskCard` — компоненты доменной области.
 - `services/authApi.ts` и `services/boardsApi.ts` — типизированные HTTP-клиенты `/api/auth/*` и `/api/boards/*` с same-origin cookie, antiforgery и разбором `ProblemDetails`.
 - `features/boards/boardLogic.ts` и `pluralize.ts` — чистые функции WIP-проверок, перемещения и подписей; покрыты тестами. `useProjects` загружает список и выполняет создание/удаление через API, `useBoard` загружает доску и сохраняет её полной заменой.
 - `features/auth/AuthProvider.tsx` загружает текущего пользователя через `GET /api/auth/me`, хранит `initializing`/`pending` и вызывает `/api/auth/*` для входа, регистрации и выхода.
@@ -182,6 +182,7 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 - `KanbexLogo` — встроенный SVG-логотип с фирменной палитрой.
 - `LoadingState` — индикация ожидания.
 - `StatusBadge` — метка приоритета/статуса.
+- `AppTextField`, `AppSelect`, `AppOption`, `AppIconButton`, `AppLinearProgress`, `AppMenu`, `AppMenuItem`, `AppNavigationDrawer`, `AppNavigationDrawerItem`, `AppThemeProvider` — алиасы Material-компонентов. Приложение импортирует их из `@kanbex/ui` и не обращается к `m3-expressive-react` напрямую.
 
 Публичный API экспортируется из `src/index.ts`. Компоненты получают данные через props и вызывают callbacks. Библиотека не выполняет fetch, не обращается к Identity/хранилищу и не содержит правил Kanban. `BoardColumn` и `TaskCard` остаются в feature-коде основного приложения.
 
@@ -228,7 +229,7 @@ API размещается в `Kanbex.Web` под префиксом `/api`. Web
 | `POST /api/boards/{boardId}/reset` | antiforgery-заголовок | `200 Board`; начальные колонки, карточки и новая версия | `401` нет сессии, `404` не найдена или недоступна |
 | `DELETE /api/boards/{boardId}` | antiforgery-заголовок | `204` | `401` нет сессии, `404` не найдена или недоступна |
 
-`CurrentUser` соответствует `src/types/index.ts`: `{ id, displayName, email }`. `BoardSummary` содержит `{ id, title, description, taskCount, columnCount }`. `Board` содержит `{ id, title, description, version, columns }`; колонка — `{ id, title, wipLimit, order, tasks }`, карточка — `{ id, title, description, priority, order }`. Доска создаётся с тремя начальными колонками и демонстрационными карточками; список упорядочен по `UpdatedAt DESC`. В `PUT` сервер принимает целое `version` из `Project.Version`; при несовпадении версии или превышении WIP возвращает `409 ProblemDetails`. `PUT` является полной заменой списка колонок и карточек доски в одной транзакции: колонки и карточки можно добавлять, переименовывать, переставлять и удалять. Идентификаторы сохраняемых сущностей сохраняют связи и комментарии; история сохраняется, кроме записей, ссылающихся на удаляемую колонку. Порядок колонок и задач должен быть непрерывным с нуля. `POST /api/boards/{boardId}/reset` заменяет колонки и карточки начальным учебным набором, удаляет пользовательские карточки вместе с комментариями и увеличивает версию. Владелец доски определяется только из аутентифицированной сессии; доступ участников пока не включён. Чужие и отсутствующие доски возвращают одинаковый `404`. `401` и `403` для `/api/*` возвращаются статусами без HTML-редиректа.
+`CurrentUser` соответствует `src/types/index.ts`: `{ id, displayName, email }`. `BoardSummary` содержит `{ id, title, description, taskCount, columnCount, updatedAt, completedTaskCount }`; `completedTaskCount` — карточки последней колонки, по нему клиент считает прогресс. `Board` содержит `{ id, title, description, version, columns }`; колонка — `{ id, title, wipLimit, order, tasks }`, карточка — `{ id, title, description, priority, order }`. Доска создаётся с тремя начальными колонками и демонстрационными карточками; список упорядочен по `UpdatedAt DESC`. В `PUT` сервер принимает целое `version` из `Project.Version`; при несовпадении версии или превышении WIP возвращает `409 ProblemDetails`. `PUT` является полной заменой списка колонок и карточек доски в одной транзакции: колонки и карточки можно добавлять, переименовывать, переставлять и удалять. Идентификаторы сохраняемых сущностей сохраняют связи и комментарии; история сохраняется, кроме записей, ссылающихся на удаляемую колонку. Порядок колонок и задач должен быть непрерывным с нуля. `POST /api/boards/{boardId}/reset` заменяет колонки и карточки начальным учебным набором, удаляет пользовательские карточки вместе с комментариями и увеличивает версию. Владелец доски определяется только из аутентифицированной сессии; доступ участников пока не включён. Чужие и отсутствующие доски возвращают одинаковый `404`. `401` и `403` для `/api/*` возвращаются статусами без HTML-редиректа.
 
 Все изменяющие запросы под `/api/*` проверяются общим `ApiAntiforgeryFilter`. Клиент получает request token и передаёт его в `X-CSRF-TOKEN`; cookie-аутентификация остаётся same-origin. Для анонимных `register` и `login` также обязателен antiforgery-токен. Токен привязан к текущей identity, поэтому после входа или регистрации клиент получает новый токен. DTO и коды ответов покрыты интеграционными тестами `src/Kanbex.Tests/AuthApiTests.cs` и `BoardApiTests.cs`.
 
@@ -259,7 +260,7 @@ API размещается в `Kanbex.Web` под префиксом `/api`. Web
 | Vite | 8.3.8 | `ReactApp` | Dev server, HMR и production-сборка. |
 | `@vitejs/plugin-react` | 6.3.0 | `ReactApp` | Поддержка React и JSX в Vite. |
 | `vite-dotnet` | 1.0.0 | `ReactApp` | Vite-плагин манифестов и публикации сборки; версия согласуется с NuGet-пакетом. |
-| `m3-expressive-react` | 1.8.2 | `Kanbex.UI` / `ReactApp` | Компоненты Material 3 Expressive и ThemeProvider; корневой entrypoint импортирует `styles.css`. |
+| `m3-expressive-react` | 1.8.2 | `Kanbex.UI` (через `@kanbex/ui`) | Компоненты Material 3 Expressive и ThemeProvider; стили подключаются через `@kanbex/ui/styles.css`. |
 | `react-router` | 7.18.5 | `ReactApp` | Клиентская маршрутизация и защищённые представления UX-уровня. |
 | `@dnd-kit/core` | 6.3.1 | `ReactApp` | Drag-and-drop карточек. |
 | `@dnd-kit/sortable` | 10.0.0 | `ReactApp` | Сортировка карточек и совместимость с `@dnd-kit/core`. |
@@ -295,6 +296,8 @@ API размещается в `Kanbex.Web` под префиксом `/api`. Web
 | `/board/{boardId:guid}` | `HomeController.BoardSpa` | Алиас хоста доски. | Клиентский guard; владелец проверяется сервером в MVP. |
 | `/boards/{**rest}` | `HomeController.BoardSpa` | Прямое открытие вложенного клиентского URL без 404. | Открытый хост; данные защищает API. |
 | `/board/{**rest}` | `HomeController.BoardSpa` | Прямое открытие вложенного клиентского URL без 404. | Открытый хост; данные защищает API. |
+| `/home` | `HomeController.SpaFallback` | Razor-хост главного экрана с боковым меню. | Клиентский guard; в MVP — аутентифицированный. |
+| `/about` | `HomeController.SpaFallback` | Razor-хост страницы «О нас». | Клиентский guard; в MVP — аутентифицированный. |
 | любой URL без расширения | `HomeController.SpaFallback` | Хост SPA для неизвестного клиентского адреса; `/api/*` получает `404`. | Открытый хост. |
 | `/login` | `HomeController.Spa` | Хост страницы входа React. | Открытый |
 | `/register` | `HomeController.Spa` | Хост страницы регистрации React. | Открытый |
@@ -309,17 +312,19 @@ API-маршруты перечислены в разделе 5 и имеют п
 
 ### 8.3. React Router и параметры
 
-Внутри React-приложения `BrowserRouter` отображает страницы входа/регистрации, список проектов, доску, профиль и страницу 404. Дерево маршрутов:
+Внутри React-приложения `BrowserRouter` отображает главную страницу с боковым меню, страницы входа/регистрации, проекты, доску, профиль и страницу 404. Дерево маршрутов:
 
 ```text
-/                         -> redirect на /boards
+/                         -> redirect на /home
 /login                    -> LoginPage (открытый)
 /register                 -> RegisterPage (открытый)
-RequireAuth + AppLayout
+RequireAuth + MainMenuLayout
+  /home                   -> HomePage
   /boards                 -> BoardsPage
-  /boards/:boardId        -> BoardPage
   /board                  -> BoardsPage (алиас)
+  /boards/:boardId        -> BoardPage
   /board/:boardId         -> BoardPage (алиас)
+  /about                  -> AboutPage
   /account                -> AccountPage
 *                         -> NotFoundPage
 ```
@@ -333,12 +338,14 @@ RequireAuth + AppLayout
 `ReactApp` подключает `@kanbex/ui` как локальную workspace-зависимость и импортирует общие компоненты из публичного API:
 
 ```tsx
-import { AppButton, AppDialog, EmptyState, StatusBadge } from '@kanbex/ui'
+import { AppButton, AppDialog, AppTextField, EmptyState, StatusBadge } from '@kanbex/ui'
 ```
+
+Material-компоненты доступны через алиасы `App*` из `src/components/AppMaterial`: `AppTextField`, `AppSelect`, `AppOption`, `AppIconButton`, `AppLinearProgress`, `AppMenu`, `AppMenuItem`, `AppNavigationDrawer`, `AppNavigationDrawerItem`, `AppThemeProvider`. Прямых импортов `m3-expressive-react` в `ReactApp` нет; стили m3 подключаются через `@kanbex/ui/styles.css`.
 
 Библиотека отвечает только за переиспользуемое представление и доступность. Приложение передаёт props и callbacks. Доменные правила, маршрутизация, API-вызовы и состояние досок остаются в `Kanbex.Web/ReactApp`; библиотека не знает о текущем пользователе, Identity или структуре БД.
 
-Фактические точки использования: `AppLayout`, `LoginPage` и `RegisterPage` импортируют `AppHeader`, `AppButton` и `KanbexLogo`; `BoardsPage` — `AppButton`, `AppDialog`, `EmptyState`; `BoardPage` — `AppButton`, `AppDialog`, `EmptyState`, `LoadingState`, `StatusBadge`; `KanbanBoard` и `LearningTips` — `StatusBadge`/`AppButton`. Таким образом библиотека реально участвует в рендере основного приложения, а не только объявлена зависимостью.
+Фактические точки использования: `MainMenuLayout` — `AppNavigationDrawer`, `AppIconButton` и `KanbexLogo`; `LoginPage` и `RegisterPage` — `KanbexLogo`; `BoardsPage` и `HomePage` — `AppButton`, `AppDialog`, `AppTextField`, `EmptyState`; `BoardPage` — `AppButton`, `AppDialog`, `EmptyState`, `LoadingState`, `StatusBadge`; `KanbanBoard` — `StatusBadge`/`AppButton`. Таким образом библиотека реально участвует в рендере основного приложения, а не только объявлена зависимостью.
 
 ## 10. Качество кода, lint и тесты
 

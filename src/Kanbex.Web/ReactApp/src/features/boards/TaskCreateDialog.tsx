@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { Option, Select, TextField } from 'm3-expressive-react'
-import { AppDialog } from '@kanbex/ui'
+import { AppDialog, AppOption, AppSelect, AppTextField } from '@kanbex/ui'
 import type { TaskPriority } from '../../types/index.js'
 import type { NewTaskInput } from './boardLogic.js'
 
@@ -52,7 +51,7 @@ export function TaskCreateDialog({ columnTitle, onCreate, onCancel }: TaskCreate
       onCancel={onCancel}
     >
       <form className="kb-form" onSubmit={handleSubmit}>
-        <TextField
+        <AppTextField
           label="Название задачи"
           name="taskTitle"
           value={title}
@@ -67,7 +66,7 @@ export function TaskCreateDialog({ columnTitle, onCreate, onCancel }: TaskCreate
           required
           inputProps={{ autoFocus: true }}
         />
-        <TextField
+        <AppTextField
           label="Описание"
           name="taskDescription"
           value={description}
@@ -77,7 +76,7 @@ export function TaskCreateDialog({ columnTitle, onCreate, onCancel }: TaskCreate
           rows={3}
           maxLength={500}
         />
-        <Select
+        <AppSelect
           label="Приоритет"
           name="taskPriority"
           value={priority}
@@ -85,11 +84,11 @@ export function TaskCreateDialog({ columnTitle, onCreate, onCancel }: TaskCreate
           fullWidth
         >
           {priorities.map((option) => (
-            <Option key={option.value} value={option.value}>
+            <AppOption key={option.value} value={option.value}>
               {option.label}
-            </Option>
+            </AppOption>
           ))}
-        </Select>
+        </AppSelect>
       </form>
     </AppDialog>
   )

@@ -1,5 +1,5 @@
 import { BrowserRouter } from 'react-router'
-import { ThemeProvider } from 'm3-expressive-react'
+import { AppThemeProvider } from '@kanbex/ui'
 import { AuthProvider } from '../features/auth/index.js'
 import { AppRouter } from '../routes/index.js'
 
@@ -10,13 +10,13 @@ import { AppRouter } from '../routes/index.js'
  */
 export function App() {
   return (
-    <ThemeProvider seedColor="#7979FF" mode="light">
+    <AppThemeProvider seedColor="#7979FF" mode="light">
       <BrowserRouter>
         <AuthProvider>
           <AppRouter />
         </AuthProvider>
       </BrowserRouter>
-    </ThemeProvider>
+    </AppThemeProvider>
   )
 }
 

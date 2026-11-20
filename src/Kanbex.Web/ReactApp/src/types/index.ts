@@ -40,6 +40,10 @@ export interface BoardSummary {
   description: string
   taskCount: number
   columnCount: number
+  /** Время последнего сохранения доски. */
+  updatedAt: string
+  /** Карточки в последней колонке — этапе «Готово». */
+  completedTaskCount: number
 }
 
 /** Текущий пользователь (безопасный DTO). */
@@ -66,13 +70,6 @@ export interface RegisterRequest {
   displayName: string
   email: string
   password: string
-}
-
-/** Обучающая подсказка. */
-export interface LearningTip {
-  id: string
-  title: string
-  body: string
 }
 
 /** Результат проверки WIP-лимита. */

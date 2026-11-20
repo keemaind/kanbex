@@ -1,22 +1,20 @@
 import { useState } from 'react'
-import { TextField } from 'm3-expressive-react'
-import { AppButton, AppDialog, EmptyState, LoadingState, StatusBadge } from '@kanbex/ui'
-import type { BoardSummary } from '../types/index.js'
-import {
-  ProjectCard,
-  ProjectCreateDialog,
-  pluralize,
-  useProjects,
-} from '../features/boards/index.js'
+import { AppButton, AppDialog, AppTextField, EmptyState, LoadingState, StatusBadge } from '@kanbex/ui'
+import { PlusIcon } from '../app/icons.js'
+import { ProjectCreateDialog, ProjectRow, pluralize, useProjects } from '../features/boards/index.js'
+import { describeApiError } from '../services/api.js'
+import type { BoardSummary, ProjectInput } from '../types/index.js'
 
 /**
- * Окно проектов: список личных Kanban-досок, поиск, создание и удаление через `/api/boards`.
+ * Окно проектов в оболочке главного меню: поиск, создание и удаление
+ * личных Kanban-досок через `/api/boards`.
  */
 export function BoardsPage() {
   const { projects, loading, error, reload, addProject, removeProject } = useProjects()
   const [query, setQuery] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
   const [projectToDelete, setProjectToDelete] = useState<BoardSummary | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const normalizedQuery = query.trim().toLocaleLowerCase('ru')
   const visibleProjects = normalizedQuery
@@ -30,39 +28,77 @@ export function BoardsPage() {
     ? `Найдено: ${visibleProjects.length} из ${projects.length}`
     : totalLabel
 
+  const handleCreate = (input: ProjectInput) => {
+    setActionError(null)
+    void addProject(input)
+      .then(() => {
+        setCreateOpen(false)
+        setQuery('')
+      })
+      .catch((cause: unknown) => {
+        setCreateOpen(false)
+        setActionError(describeApiError(cause))
+      })
+  }
+
+  const handleDelete = () => {
+    if (!projectToDelete) return
+
+    const project = projectToDelete
+    setProjectToDelete(null)
+    void removeProject(project.id).catch((cause: unknown) => {
+      setActionError(describeApiError(cause))
+    })
+  }
+
   return (
-    <div className="kb-page">
-      <div className="kb-page__head">
-        <div>
-          <h1 className="kb-page__title">Проекты</h1>
-          <p className="kb-page__lead">
-            Каждый проект — это отдельная Kanban-доска с колонками и WIP-лимитами.
-            Выберите проект, чтобы открыть его доску.
-          </p>
-        </div>
-        <AppButton variant="filled" size="md" onClick={() => setCreateOpen(true)}>
+    <div className="kb-home">
+      <header className="kb-home__head">
+        <h1 className="kb-home__title">Проекты</h1>
+        <p className="kb-home__lead">
+          Каждый проект — это отдельная Kanban-доска с колонками и WIP-лимитами.
+          Выберите проект, чтобы открыть его доску.
+        </p>
+        <AppButton
+          variant="filled"
+          size="md"
+          startIcon={<PlusIcon />}
+          onClick={() => setCreateOpen(true)}
+        >
           Новый проект
         </AppButton>
-      </div>
+      </header>
 
       {loading ? <LoadingState label="Загружаем проекты…" /> : null}
+
       {error ? (
-        <div role="alert">
+        <div className="kb-home__error" role="alert">
           <StatusBadge tone="danger" withDot>{error}</StatusBadge>
-          <AppButton variant="text" size="sm" onClick={() => void reload()}>Повторить</AppButton>
+          <AppButton variant="text" size="sm" onClick={() => void reload()}>
+            Повторить
+          </AppButton>
         </div>
       ) : null}
-      {!loading && projects.length === 0 ? (
+
+      {actionError ? (
+        <div role="alert">
+          <StatusBadge tone="danger" withDot>{actionError}</StatusBadge>
+        </div>
+      ) : null}
+
+      {!loading && !error && projects.length === 0 ? (
         <EmptyState
           title="Проектов пока нет"
-          description="Создайте первый проект: в его доске появятся колонки «К выполнению», «В работе» и «Готово»."
+          description="Создайте первый проект — Kanbex добавит три колонки и демонстрационные карточки."
           actionLabel="Создать проект"
           onAction={() => setCreateOpen(true)}
         />
-      ) : !loading && projects.length > 0 ? (
+      ) : null}
+
+      {!loading && !error && projects.length > 0 ? (
         <>
           <div className="kb-projects-toolbar">
-            <TextField
+            <AppTextField
               className="kb-projects-search"
               variant="outlined"
               label="Поиск по проектам"
@@ -82,9 +118,13 @@ export function BoardsPage() {
               onAction={() => setQuery('')}
             />
           ) : (
-            <ul className="kb-project-list">
+            <ul className="kb-home__projects">
               {visibleProjects.map((project) => (
-                <ProjectCard key={project.id} project={project} onDelete={setProjectToDelete} />
+                <ProjectRow
+                  key={project.id}
+                  project={project}
+                  onDelete={setProjectToDelete}
+                />
               ))}
             </ul>
           )}
@@ -93,14 +133,7 @@ export function BoardsPage() {
 
       {createOpen ? (
         <ProjectCreateDialog
-          onCreate={(input) => {
-            void addProject(input).then(() => {
-              setCreateOpen(false)
-              setQuery('')
-            }).catch((cause: unknown) => {
-              window.alert(cause instanceof Error ? cause.message : 'Не удалось создать проект.')
-            })
-          }}
+          onCreate={handleCreate}
           onCancel={() => setCreateOpen(false)}
         />
       ) : null}
@@ -110,13 +143,7 @@ export function BoardsPage() {
         title="Удалить проект?"
         description={projectToDelete ? `Проект «${projectToDelete.title}» и его доска будут удалены без возможности восстановления.` : undefined}
         confirmLabel="Удалить"
-        onConfirm={() => {
-          if (projectToDelete) {
-            void removeProject(projectToDelete.id).then(() => setProjectToDelete(null)).catch((cause: unknown) => {
-              window.alert(cause instanceof Error ? cause.message : 'Не удалось удалить проект.')
-            })
-          }
-        }}
+        onConfirm={handleDelete}
         onCancel={() => setProjectToDelete(null)}
       />
     </div>

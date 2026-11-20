@@ -32,17 +32,28 @@ public sealed class BoardService(KanbexDbContext dbContext)
 
     public async Task<IReadOnlyList<BoardSummaryResponse>> ListAsync(string ownerId, CancellationToken cancellationToken)
     {
-        return await dbContext.Projects
+        var projects = await dbContext.Projects
             .AsNoTracking()
             .Where(project => project.OwnerId == ownerId)
+            .Include(project => project.Columns)
+            .ThenInclude(column => column.Tasks)
             .OrderByDescending(project => project.UpdatedAt)
-            .Select(project => new BoardSummaryResponse(
+            .ToListAsync(cancellationToken);
+
+        return projects.Select(project =>
+        {
+            // Последняя колонка считается этапом «Готово»: её карточки дают прогресс.
+            var lastColumn = project.Columns.OrderByDescending(column => column.SortOrder).FirstOrDefault();
+
+            return new BoardSummaryResponse(
                 project.Id,
                 project.Name,
                 project.Description ?? string.Empty,
-                project.Tasks.Count,
-                project.Columns.Count))
-            .ToListAsync(cancellationToken);
+                project.Columns.Sum(column => column.Tasks.Count),
+                project.Columns.Count,
+                project.UpdatedAt,
+                lastColumn?.Tasks.Count ?? 0);
+        }).ToList();
     }
 
     public async Task<BoardResponse?> GetAsync(Guid boardId, string ownerId, CancellationToken cancellationToken)

@@ -8,7 +8,9 @@ public sealed record BoardSummaryResponse(
     string Title,
     string Description,
     int TaskCount,
-    int ColumnCount);
+    int ColumnCount,
+    DateTime UpdatedAt,
+    int CompletedTaskCount);
 
 public sealed record BoardResponse(
     Guid Id,

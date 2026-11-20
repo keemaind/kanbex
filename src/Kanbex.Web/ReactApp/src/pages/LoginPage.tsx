@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { AppHeader, KanbexLogo, StatusBadge } from '@kanbex/ui'
+import { KanbexLogo, StatusBadge } from '@kanbex/ui'
 import { LoginForm, useAuth } from '../features/auth/index.js'
 import { describeApiError } from '../services/api.js'
 import type { LoginRequest } from '../types/index.js'
@@ -18,7 +18,7 @@ export function LoginPage() {
     setError(null)
     try {
       await login(request)
-      navigate('/boards', { replace: true })
+      navigate('/home', { replace: true })
     } catch (submitError) {
       setError(describeApiError(submitError))
     }
@@ -26,9 +26,11 @@ export function LoginPage() {
 
   return (
     <div className="kb-auth-page">
-      <AppHeader subtitle="Тренажёр Kanban-потока" logo={<KanbexLogo height={30} />} />
       <main className="kb-auth">
         <div className="kb-auth__card">
+          <div className="kb-auth__brand">
+            <KanbexLogo height={30} />
+          </div>
           <h1 className="kb-auth__title">Вход</h1>
           <p className="kb-auth__lead">
             Войдите в учебный аккаунт. Демонстрационная запись:{' '}
@@ -39,7 +41,7 @@ export function LoginPage() {
               <StatusBadge tone="success" withDot>
                 Вы уже вошли как {user.displayName}
               </StatusBadge>{' '}
-              <Link to="/boards">Перейти к доскам</Link>
+              <Link to="/home">Перейти на главную</Link>
             </p>
           ) : null}
           <LoginForm onSubmit={handleSubmit} pending={pending} error={error} />

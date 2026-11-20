@@ -3,10 +3,14 @@ import type { Board, BoardColumn, TaskCard } from '../../types/index.js'
 import {
   addTaskToColumn,
   canAcceptTask,
+  deleteTaskFromBoard,
   getNextColumn,
   getPreviousColumn,
   getWipState,
   moveTaskToColumn,
+  normalizeColumns,
+  replaceColumnsInBoard,
+  updateTaskInBoard,
 } from './boardLogic.js'
 
 function task(id: string, order = 0): TaskCard {
@@ -176,5 +180,70 @@ describe('column navigation', () => {
     expect(getPreviousColumn(board(), 'todo')).toBeUndefined()
     expect(getNextColumn(board(), 'missing')).toBeUndefined()
     expect(getPreviousColumn(board(), 'missing')).toBeUndefined()
+  })
+})
+
+describe('updateTaskInBoard', () => {
+  it('updates the card without changing its column or order', () => {
+    const updated = updateTaskInBoard(board(), 'b', { title: 'Новая', priority: 'critical' })
+
+    expect(updated).not.toBeNull()
+    expect(updated?.columns[0].tasks[1]).toMatchObject({
+      id: 'b',
+      title: 'Новая',
+      priority: 'critical',
+      order: 1,
+    })
+    expect(updated?.columns[0].tasks).toHaveLength(2)
+  })
+
+  it('returns null for an unknown card', () => {
+    expect(updateTaskInBoard(board(), 'missing', { title: 'Новая' })).toBeNull()
+  })
+})
+
+describe('deleteTaskFromBoard', () => {
+  it('removes the card and reindexes the remaining ones', () => {
+    const result = deleteTaskFromBoard(board(), 'a')
+
+    expect(result.deleted).toBe(true)
+    expect(result.board.columns[0].tasks.map((item) => item.id)).toEqual(['b'])
+    expect(result.board.columns[0].tasks[0].order).toBe(0)
+  })
+
+  it('keeps the board unchanged for an unknown card', () => {
+    const source = board()
+    const result = deleteTaskFromBoard(source, 'missing')
+
+    expect(result.deleted).toBe(false)
+    expect(result.board).toBe(source)
+  })
+})
+
+describe('column management', () => {
+  it('normalizes column order to a contiguous sequence', () => {
+    const columns = [column('done', 5, []), column('todo', 2, []), column('progress', 9, [])]
+    const normalized = normalizeColumns(columns)
+
+    expect(normalized.map((item) => [item.id, item.order])).toEqual([
+      ['todo', 0],
+      ['done', 1],
+      ['progress', 2],
+    ])
+  })
+
+  it('replaces columns while keeping their cards', () => {
+    const replacement: BoardColumn = {
+      id: 'new',
+      title: 'Новая',
+      wipLimit: 3,
+      order: 10,
+      tasks: [task('x')],
+    }
+    const updated = replaceColumnsInBoard(board(), [replacement, board().columns[0]])
+
+    expect(updated.columns.map((item) => item.id)).toEqual(['todo', 'new'])
+    expect(updated.columns[1].order).toBe(1)
+    expect(updated.columns[1].tasks.map((item) => item.id)).toEqual(['x'])
   })
 })

@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { TextField } from 'm3-expressive-react'
-import { AppButton } from '@kanbex/ui'
+import { AppButton, AppTextField } from '@kanbex/ui'
 import type { LoginRequest } from '../../types/index.js'
 
 export interface LoginFormProps {
@@ -35,7 +34,7 @@ export function LoginForm({ onSubmit, pending = false, error = null }: LoginForm
 
   return (
     <form className="kb-form" onSubmit={handleSubmit} noValidate>
-      <TextField
+      <AppTextField
         label="E-mail"
         type="email"
         name="email"
@@ -44,7 +43,7 @@ export function LoginForm({ onSubmit, pending = false, error = null }: LoginForm
         onChange={(event) => setEmail(event.target.value)}
         required
       />
-      <TextField
+      <AppTextField
         label="Пароль"
         type="password"
         name="password"

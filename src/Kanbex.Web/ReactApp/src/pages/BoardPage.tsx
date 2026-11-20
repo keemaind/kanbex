@@ -1,32 +1,67 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { AppButton, AppDialog, EmptyState, LoadingState, StatusBadge } from '@kanbex/ui'
-import { KanbanBoard, learningTips, TaskCreateDialog, useBoard } from '../features/boards/index.js'
-import type { NewTaskInput } from '../features/boards/index.js'
-import { LearningTips } from '../features/learning/index.js'
+import {
+  BoardDetailsDialog,
+  ColumnManagerDialog,
+  KanbanBoard,
+  TaskCreateDialog,
+  TaskEditDialog,
+  useBoard,
+} from '../features/boards/index.js'
+import type { NewTaskInput, TaskEditValues } from '../features/boards/index.js'
 import type { TaskCard as TaskCardModel } from '../types/index.js'
 
 const boardIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-const priorityLabels: Record<TaskCardModel['priority'], string> = {
-  low: 'Низкий',
-  medium: 'Средний',
-  high: 'Высокий',
-  critical: 'Критический',
-}
+type SaveTone = 'info' | 'danger' | 'warning' | 'success'
 
 /**
- * Представление доски: канбан-колонки и обучающие подсказки.
+ * Представление доски: канбан-колонки, редактирование карточек и колонок.
  * Идентификатор, существование и доступ проверяются API.
  */
 export function BoardPage() {
   const { boardId = '' } = useParams()
   const navigate = useNavigate()
-  const { board, loading, error, saving, lastMove, moveTask, addTask, reset, save } = useBoard(boardId)
-  const [activeTask, setActiveTask] = useState<TaskCardModel | null>(null)
+  const {
+    board,
+    loading,
+    error,
+    saveError,
+    saving,
+    dirty,
+    conflict,
+    lastMove,
+    moveTask,
+    addTask,
+    updateTask,
+    deleteTask,
+    updateBoard,
+    replaceColumns,
+    reset,
+    save,
+    reload,
+    overwrite,
+  } = useBoard(boardId)
+  const [editTaskId, setEditTaskId] = useState<string | null>(null)
+  const [taskToDelete, setTaskToDelete] = useState<TaskCardModel | null>(null)
   const [createColumnId, setCreateColumnId] = useState<string | null>(null)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [columnsOpen, setColumnsOpen] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
   const [notice, setNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null)
+
+  useEffect(() => {
+    if (!dirty) return
+
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [dirty])
 
   if (!boardIdPattern.test(boardId)) {
     return (
@@ -63,9 +98,32 @@ export function BoardPage() {
   if (!board) return null
 
   const wipRejection = lastMove?.rejection === 'wip-limit'
-  const createColumn = createColumnId && board
+  const createColumn = createColumnId
     ? board.columns.find((column) => column.id === createColumnId) ?? null
     : null
+  const editingTask = editTaskId
+    ? board.columns.flatMap((column) => column.tasks).find((task) => task.id === editTaskId) ?? null
+    : null
+  const editingTaskColumn = editTaskId
+    ? board.columns.find((column) => column.tasks.some((task) => task.id === editTaskId)) ?? null
+    : null
+
+  const saveTone: SaveTone = saving
+    ? 'info'
+    : conflict || saveError
+      ? 'danger'
+      : dirty
+        ? 'warning'
+        : 'success'
+  const saveLabel = saving
+    ? 'Сохраняем…'
+    : conflict
+      ? 'Конфликт версии'
+      : saveError
+        ? 'Не удалось сохранить'
+        : dirty
+          ? 'Есть несохранённые изменения'
+          : 'Все изменения сохранены'
 
   const handleCreateTask = (input: NewTaskInput) => {
     if (!createColumnId) return
@@ -87,6 +145,14 @@ export function BoardPage() {
     setNotice({ tone: 'success', text: `Задача «${result.task.title}» добавлена.` })
   }
 
+  const handleEditTask = (values: TaskEditValues) => {
+    if (!editingTask) return
+
+    updateTask(editingTask.id, values)
+    setEditTaskId(null)
+    setNotice({ tone: 'success', text: 'Карточка обновлена.' })
+  }
+
   return (
     <div className="kb-page">
       <div className="kb-page__head">
@@ -100,10 +166,24 @@ export function BoardPage() {
           <p className="kb-page__lead">{board.description}</p>
         </div>
         <div className="kb-page__actions">
-          <AppButton variant="outlined" size="sm" disabled={saving} onClick={() => setResetOpen(true)}>
-            Сбросить доску
+          <StatusBadge tone={saveTone} withDot>
+            {saveLabel}
+          </StatusBadge>
+          <AppButton variant="text" size="sm" onClick={() => setColumnsOpen(true)}>
+            Колонки
           </AppButton>
-          <AppButton variant="filled" size="sm" disabled={saving} onClick={() => void save().catch(() => undefined)}>
+          <AppButton variant="text" size="sm" onClick={() => setDetailsOpen(true)}>
+            Настройки
+          </AppButton>
+          <AppButton variant="outlined" size="sm" disabled={saving} onClick={() => setResetOpen(true)}>
+            Сбросить
+          </AppButton>
+          <AppButton
+            variant="filled"
+            size="sm"
+            disabled={saving || !dirty}
+            onClick={() => void save().catch(() => undefined)}
+          >
             {saving ? 'Сохраняем…' : 'Сохранить'}
           </AppButton>
         </div>
@@ -116,13 +196,12 @@ export function BoardPage() {
             setNotice(null)
             moveTask(taskId, targetColumnId)
           }}
-          onOpenTask={(task) => setActiveTask(task)}
+          onOpenTask={(task) => setEditTaskId(task.id)}
           onCreateTask={(columnId) => setCreateColumnId(columnId)}
         />
-        <LearningTips tips={learningTips} />
       </div>
 
-      {error ? <StatusBadge tone="danger" withDot>{error}</StatusBadge> : null}
+      {saveError ? <StatusBadge tone="danger" withDot>{saveError}</StatusBadge> : null}
       <div className="kb-board__feedback" role="status" aria-live="polite">
         {notice ? (
           <StatusBadge tone={notice.tone} withDot>
@@ -138,33 +217,63 @@ export function BoardPage() {
           </StatusBadge>
         ) : (
           <span className="kb-board__feedback-idle">
-            Изменения находятся в памяти страницы; нажмите «Сохранить», чтобы отправить их на сервер.
+            Изменения сохраняются автоматически; кнопка «Сохранить» отправляет их сразу.
           </span>
         )}
       </div>
 
+      {editingTask && editingTaskColumn ? (
+        <TaskEditDialog
+          task={editingTask}
+          columnTitle={editingTaskColumn.title}
+          onSave={handleEditTask}
+          onDelete={() => {
+            setTaskToDelete(editingTask)
+            setEditTaskId(null)
+          }}
+          onCancel={() => setEditTaskId(null)}
+        />
+      ) : null}
+
       <AppDialog
-        open={activeTask !== null}
-        title={activeTask?.title ?? 'Задача'}
-        description={activeTask?.description}
-        confirmLabel="Закрыть"
-        cancelLabel={null}
-        onConfirm={() => setActiveTask(null)}
-        onCancel={() => setActiveTask(null)}
-      >
-        {activeTask ? (
-          <dl className="kb-task-meta">
-            <div>
-              <dt>Приоритет</dt>
-              <dd>{priorityLabels[activeTask.priority]}</dd>
-            </div>
-            <div>
-              <dt>Позиция</dt>
-              <dd>#{activeTask.order + 1}</dd>
-            </div>
-          </dl>
-        ) : null}
-      </AppDialog>
+        open={taskToDelete !== null}
+        title="Удалить карточку?"
+        description={taskToDelete ? `Карточка «${taskToDelete.title}» будет удалена.` : undefined}
+        confirmLabel="Удалить"
+        onConfirm={() => {
+          if (taskToDelete) {
+            deleteTask(taskToDelete.id)
+            setTaskToDelete(null)
+            setNotice({ tone: 'success', text: 'Карточка удалена.' })
+          }
+        }}
+        onCancel={() => setTaskToDelete(null)}
+      />
+
+      {detailsOpen ? (
+        <BoardDetailsDialog
+          title={board.title}
+          description={board.description}
+          onSave={(values) => {
+            updateBoard(values)
+            setDetailsOpen(false)
+            setNotice({ tone: 'success', text: 'Настройки доски обновлены.' })
+          }}
+          onCancel={() => setDetailsOpen(false)}
+        />
+      ) : null}
+
+      {columnsOpen ? (
+        <ColumnManagerDialog
+          columns={board.columns}
+          onApply={(columns) => {
+            replaceColumns(columns)
+            setColumnsOpen(false)
+            setNotice({ tone: 'success', text: 'Колонки обновлены.' })
+          }}
+          onCancel={() => setColumnsOpen(false)}
+        />
+      ) : null}
 
       <AppDialog
         open={resetOpen}
@@ -181,6 +290,37 @@ export function BoardPage() {
         }}
         onCancel={() => setResetOpen(false)}
       />
+
+      <AppDialog
+        open={conflict}
+        title="Доска изменена на сервере"
+        description="Пока вы редактировали, доску сохранили в другой вкладке. Загрузите актуальную версию или сохраните свои изменения поверх неё."
+        confirmLabel="Загрузить актуальную"
+        cancelLabel={null}
+        busy={saving}
+        onConfirm={() => {
+          void reload()
+            .then(() => setNotice({ tone: 'success', text: 'Загружена актуальная версия доски.' }))
+            .catch((cause: unknown) => {
+              setNotice({ tone: 'danger', text: cause instanceof Error ? cause.message : 'Не удалось загрузить доску.' })
+            })
+        }}
+        onCancel={() => undefined}
+      >
+        <AppButton
+          variant="tonal"
+          disabled={saving}
+          onClick={() => {
+            void overwrite()
+              .then(() => setNotice({ tone: 'success', text: 'Изменения сохранены поверх актуальной версии.' }))
+              .catch((cause: unknown) => {
+                setNotice({ tone: 'danger', text: cause instanceof Error ? cause.message : 'Не удалось сохранить доску.' })
+              })
+          }}
+        >
+          Сохранить мои изменения поверх
+        </AppButton>
+      </AppDialog>
 
       {createColumn ? (
         <TaskCreateDialog

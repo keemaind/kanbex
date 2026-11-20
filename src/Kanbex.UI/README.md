@@ -15,6 +15,7 @@
 | `KanbexLogo` | Встроенный SVG-логотип с палитрой бренда. |
 | `LoadingState` | Индикация ожидания. |
 | `StatusBadge` | Метка приоритета или статуса. |
+| `AppTextField`, `AppSelect`, `AppOption`, `AppIconButton`, `AppLinearProgress`, `AppMenu`, `AppMenuItem`, `AppNavigationDrawer`, `AppNavigationDrawerItem`, `AppThemeProvider` | Алиасы Material-компонентов из `m3-expressive-react`, чтобы приложение не импортировало стороннюю библиотеку напрямую. |
 
 ## Подключение
 
@@ -28,7 +29,9 @@ import '@kanbex/ui/styles.css'
 
 Стили используют токены `--md-sys-color-*`, которые выставляет `ThemeProvider`
 из `m3-expressive-react`, поэтому библиотека автоматически следует теме
-основного приложения. Фирменные цвета логотипа доступны как `--kb-color-violet`,
+основного приложения. `@kanbex/ui/styles.css` импортирует стили
+`m3-expressive-react/styles.css`, так что приложению достаточно одного импорта.
+Фирменные цвета логотипа доступны как `--kb-color-violet`,
 `--kb-color-violet-soft`, `--kb-color-red`, `--kb-color-red-soft`,
 `--kb-color-green`, `--kb-color-green-soft`.
 

@@ -1,6 +1,8 @@
 export { AccountPage } from './AccountPage.js'
+export { AboutPage } from './AboutPage.js'
 export { BoardPage, BoardPageLoading } from './BoardPage.js'
 export { BoardsPage } from './BoardsPage.js'
+export { HomePage } from './HomePage.js'
 export { LoginPage } from './LoginPage.js'
 export { NotFoundPage } from './NotFoundPage.js'
 export { RegisterPage } from './RegisterPage.js'

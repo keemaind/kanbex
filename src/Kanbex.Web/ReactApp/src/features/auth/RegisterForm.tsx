@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { TextField } from 'm3-expressive-react'
-import { AppButton } from '@kanbex/ui'
+import { AppButton, AppTextField } from '@kanbex/ui'
 import type { RegisterRequest } from '../../types/index.js'
 
 export interface RegisterFormProps {
@@ -48,7 +47,7 @@ export function RegisterForm({ onSubmit, pending = false, error = null }: Regist
 
   return (
     <form className="kb-form" onSubmit={handleSubmit} noValidate>
-      <TextField
+      <AppTextField
         label="Имя"
         name="displayName"
         autoComplete="nickname"
@@ -56,7 +55,7 @@ export function RegisterForm({ onSubmit, pending = false, error = null }: Regist
         onChange={(event) => setDisplayName(event.target.value)}
         required
       />
-      <TextField
+      <AppTextField
         label="E-mail"
         type="email"
         name="email"
@@ -65,7 +64,7 @@ export function RegisterForm({ onSubmit, pending = false, error = null }: Regist
         onChange={(event) => setEmail(event.target.value)}
         required
       />
-      <TextField
+      <AppTextField
         label="Пароль"
         type="password"
         name="password"

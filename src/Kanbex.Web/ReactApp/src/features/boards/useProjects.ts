@@ -26,6 +26,8 @@ export function useProjects(): UseProjectsResult {
         description: board.description,
         taskCount: board.taskCount,
         columnCount: board.columnCount,
+        updatedAt: board.updatedAt,
+        completedTaskCount: board.completedTaskCount,
       })))
       setError(null)
     } catch (cause) {
@@ -41,12 +43,16 @@ export function useProjects(): UseProjectsResult {
 
   const addProject = useCallback(async (input: ProjectInput) => {
     const board = await createBoard(input.title, input.description)
+    const orderedColumns = [...board.columns].sort((left, right) => left.order - right.order)
+    const lastColumn = orderedColumns[orderedColumns.length - 1]
     const project: BoardSummary = {
       id: board.id,
       title: board.title,
       description: board.description,
       columnCount: board.columns.length,
       taskCount: board.columns.reduce((sum, column) => sum + column.tasks.length, 0),
+      completedTaskCount: lastColumn?.tasks.length ?? 0,
+      updatedAt: new Date().toISOString(),
     }
     setProjects((current) => [project, ...current])
     setError(null)
