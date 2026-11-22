@@ -14,7 +14,7 @@ public class HomeController : Controller
     // иначе BrowserRouter получает 404 от сервера до запуска приложения.
     [HttpGet("/login")]
     [HttpGet("/register")]
-    [HttpGet("/account")]
+    [HttpGet("/settings")]
     public IActionResult Spa() => View("Index");
 
     // Клиентские вложенные пути доски (в том числе с невалидным boardId)

@@ -22,6 +22,18 @@ public sealed record LoginRequest(
     [Required(ErrorMessage = "Укажите пароль.")]
     string Password);
 
+/// <summary>Новое отображаемое имя из формы профиля.</summary>
+public sealed record UpdateDisplayNameRequest(
+    [Required(ErrorMessage = "Укажите имя.")]
+    string DisplayName);
+
+/// <summary>Смена пароля из формы профиля.</summary>
+public sealed record ChangePasswordRequest(
+    [Required(ErrorMessage = "Укажите текущий пароль.")]
+    string CurrentPassword,
+    [Required(ErrorMessage = "Укажите новый пароль.")]
+    string NewPassword);
+
 /// <summary>
 /// Безопасный DTO текущего пользователя. Не содержит хэшей и служебных
 /// полей Identity; совпадает с `CurrentUser` в клиентских типах.

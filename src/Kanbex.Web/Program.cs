@@ -5,6 +5,7 @@ using Kanbex.Web.Services;
 using Kanbex.Infrastructure.Domain.Enums;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -16,8 +17,19 @@ var connectionString = builder.Configuration.GetConnectionString("Kanbex")
     ?? throw new InvalidOperationException(
         "Строка подключения 'Kanbex' не задана. Добавьте ConnectionStrings:Kanbex в appsettings.json.");
 
+// SQLite разрешает относительный Data Source от рабочего каталога процесса,
+// поэтому якорим его на content root: база всегда лежит рядом с приложением.
+var sqliteConnectionString = new SqliteConnectionStringBuilder(connectionString);
+if (!Path.IsPathRooted(sqliteConnectionString.DataSource))
+{
+    sqliteConnectionString.DataSource = Path.Combine(
+        builder.Environment.ContentRootPath,
+        sqliteConnectionString.DataSource);
+}
+
 // EF Core использует SQLite; файл базы лежит вне исходного контроля версий.
-builder.Services.AddDbContext<KanbexDbContext>(options => options.UseSqlite(connectionString));
+builder.Services.AddDbContext<KanbexDbContext>(options =>
+    options.UseSqlite(sqliteConnectionString.ConnectionString));
 
 // Identity хранит пользователей и роли в той же базе через EF Core и выдаёт
 // same-origin cookie-сессию для MVC-хостов и API.

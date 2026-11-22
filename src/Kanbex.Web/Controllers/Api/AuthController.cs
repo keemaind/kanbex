@@ -121,6 +121,70 @@ public sealed class AuthController : ControllerBase
         return Ok(ToResponse(user));
     }
 
+    /// <summary>
+    /// Обновляет отображаемое имя текущего пользователя. Cookie обновлять не
+    /// нужно: `/api/auth/me` читает имя из сущности, а не из клеймов.
+    /// </summary>
+    [Authorize]
+    [HttpPost("display-name")]
+    public async Task<IActionResult> UpdateDisplayName([FromBody] UpdateDisplayNameRequest request)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null)
+        {
+            return UnauthorizedProblem("Сессия не найдена. Войдите снова.");
+        }
+
+        var displayName = request.DisplayName.Trim();
+        if (displayName.Length is < 2 or > 120)
+        {
+            ModelState.AddModelError(
+                nameof(UpdateDisplayNameRequest.DisplayName),
+                "Имя должно содержать от 2 до 120 символов.");
+            return ValidationProblem(ModelState);
+        }
+
+        user.DisplayName = displayName;
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            return ValidationProblemResult(result);
+        }
+
+        return Ok(ToResponse(user));
+    }
+
+    /// <summary>
+    /// Меняет пароль и обновляет security stamp в текущей cookie-сессии, чтобы
+    /// пользователю не приходилось входить заново.
+    /// </summary>
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null)
+        {
+            return UnauthorizedProblem("Сессия не найдена. Войдите снова.");
+        }
+
+        var result = await _userManager.ChangePasswordAsync(
+            user,
+            request.CurrentPassword,
+            request.NewPassword);
+
+        if (!result.Succeeded)
+        {
+            // Неверный текущий пароль и нарушения политики Identity возвращаются
+            // как ValidationProblem с ключами кодов Identity (PasswordMismatch,
+            // PasswordTooShort и т.п.).
+            return ValidationProblemResult(result);
+        }
+
+        await _signInManager.RefreshSignInAsync(user);
+        return Ok(ToResponse(user));
+    }
+
     [Authorize]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()

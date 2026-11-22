@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AppButton, AppDialog, AppTextField, EmptyState, LoadingState, StatusBadge } from '@kanbex/ui'
+import { AppButton, AppDialog, AppSearchBar, EmptyState, LoadingState, StatusBadge } from '@kanbex/ui'
 import { PlusIcon } from '../app/icons.js'
 import { ProjectCreateDialog, ProjectRow, pluralize, useProjects } from '../features/boards/index.js'
 import { describeApiError } from '../services/api.js'
@@ -59,14 +59,6 @@ export function BoardsPage() {
           Каждый проект — это отдельная Kanban-доска с колонками и WIP-лимитами.
           Выберите проект, чтобы открыть его доску.
         </p>
-        <AppButton
-          variant="filled"
-          size="md"
-          startIcon={<PlusIcon />}
-          onClick={() => setCreateOpen(true)}
-        >
-          Новый проект
-        </AppButton>
       </header>
 
       {loading ? <LoadingState label="Загружаем проекты…" /> : null}
@@ -98,12 +90,21 @@ export function BoardsPage() {
       {!loading && !error && projects.length > 0 ? (
         <>
           <div className="kb-projects-toolbar">
-            <AppTextField
+            <AppButton
+              variant="filled"
+              size="md"
+              startIcon={<PlusIcon />}
+              onClick={() => setCreateOpen(true)}
+            >
+              Новый проект
+            </AppButton>
+            <AppSearchBar
               className="kb-projects-search"
-              variant="outlined"
-              label="Поиск по проектам"
+              name="project-search"
+              placeholder="Поиск по проектам"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(_, value) => setQuery(value)}
+              inputProps={{ 'aria-label': 'Поиск по проектам' }}
             />
             <span className="kb-projects-count" aria-live="polite">
               {countLabel}

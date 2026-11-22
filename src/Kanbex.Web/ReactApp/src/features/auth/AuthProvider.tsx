@@ -21,6 +21,8 @@ export interface AuthContextValue {
   login: (request: LoginRequest) => Promise<void>
   register: (request: RegisterRequest) => Promise<void>
   logout: () => Promise<void>
+  /** Обновляет пользователя в состоянии после изменения профиля. */
+  updateUser: (user: CurrentUser) => void
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -98,6 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       register,
       logout,
+      updateUser: (updated: CurrentUser) => {
+        setUser(updated)
+      },
     }),
     [user, initializing, pending, login, register, logout],
   )

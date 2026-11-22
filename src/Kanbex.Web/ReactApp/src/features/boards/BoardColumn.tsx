@@ -1,37 +1,29 @@
 import { useDroppable } from '@dnd-kit/core'
-import { AppButton, StatusBadge } from '@kanbex/ui'
-import type { BadgeTone } from '@kanbex/ui'
+import { AppButton } from '@kanbex/ui'
 import type { BoardColumn as BoardColumnModel, TaskCard as TaskCardModel } from '../../types/index.js'
-import { canAcceptTask, getWipState } from './boardLogic.js'
+import { canAcceptTask, getWipState, isTaskCompleted } from './boardLogic.js'
 import { TaskCard } from './TaskCard.js'
+import { NoteIcon } from '../../app/icons.js'
 
 export interface BoardColumnProps {
   column: BoardColumnModel
-  /** Все колонки доски — нужны, чтобы найти соседние этапы. */
+  /** Все колонки доски — нужны, чтобы найти финальный этап. */
   boardColumns: BoardColumnModel[]
   disabled?: boolean
   onOpenTask: (task: TaskCardModel) => void
-  onMoveTask: (taskId: string, targetColumnId: string) => void
   onCreateTask: (columnId: string) => void
 }
 
-function wipTone(used: number, limit: number | null): BadgeTone {
-  if (limit === null) return 'neutral'
-  if (used > limit) return 'danger'
-  if (used >= limit) return 'warning'
-  return 'success'
-}
-
 /**
- * Колонка канбан-доски: заголовок, счётчик WIP, список карточек и зона
- * для перетаскивания. WIP-лимит подсвечивается, но не блокирует просмотр.
+ * Колонка канбан-доски: светлая подложка цвета этапа, заголовок с цветной
+ * точкой и счётчиком, список карточек и зона для перетаскивания.
+ * WIP-лимит подсвечивается, но не блокирует просмотр.
  */
 export function BoardColumn({
   column,
   boardColumns,
   disabled = false,
   onOpenTask,
-  onMoveTask,
   onCreateTask,
 }: BoardColumnProps) {
   const wip = getWipState(column)
@@ -39,8 +31,9 @@ export function BoardColumn({
   const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { columnId: column.id } })
 
   const sortedTasks = [...column.tasks].sort((a, b) => a.order - b.order)
-  const previous = boardColumns.find((candidate) => candidate.order === column.order - 1)
-  const next = boardColumns.find((candidate) => candidate.order === column.order + 1)
+  const countLabel = wip.limit === null ? String(wip.used) : `${wip.used} / ${wip.limit}`
+  const countTitle = wip.limit === null ? 'Без ограничения WIP' : `WIP-лимит: ${wip.limit}`
+  const atLimit = wip.isAtLimit || wip.isOverLimit
 
   return (
     <section
@@ -54,55 +47,63 @@ export function BoardColumn({
         <h2 className="kb-column__title" id={`column-title-${column.id}`}>
           {column.title}
         </h2>
-        <StatusBadge
-          tone={wipTone(wip.used, wip.limit)}
-          title={wip.limit === null ? 'Без ограничения WIP' : `WIP-лимит: ${wip.limit}`}
-        >
-          {wip.limit === null ? `${wip.used} задач` : `${wip.used} / ${wip.limit}`}
-        </StatusBadge>
+        <span className={atLimit ? 'kb-column__count kb-column__count--limit' : 'kb-column__count'} title={countTitle}>
+          {countLabel}
+        </span>
       </header>
 
-      {wip.limit !== null ? (
-        <p className={wip.isAtLimit ? 'kb-column__wip kb-column__wip--limit' : 'kb-column__wip'}>
+      {atLimit ? (
+        <p className="kb-column__wip kb-column__wip--limit">
           {wip.isOverLimit
             ? 'Лимит превышен — освободите слот перед следующей задачей.'
-            : wip.isAtLimit
-              ? 'Лимит достигнут: сначала завершите или верните задачу.'
-              : `WIP-лимит: ${wip.used} из ${wip.limit}.`}
+            : 'Лимит достигнут: сначала завершите или верните задачу.'}
         </p>
       ) : null}
 
       <div className="kb-column__tasks">
         {sortedTasks.length === 0 ? (
-          <p className="kb-column__empty">Пока пусто. Перетащите карточку сюда или создайте новую.</p>
+          <div className="kb-column__empty">
+            <span className="kb-column__empty-icon" aria-hidden="true">
+              <NoteIcon />
+            </span>
+            <p className="kb-column__empty-text">Перетащите сюда карточку или создайте новую</p>
+            <AppButton
+              variant="text"
+              size="sm"
+              onClick={() => onCreateTask(column.id)}
+              disabled={disabled || !acceptsTask}
+              title={acceptsTask ? 'Добавить задачу в колонку' : 'WIP-лимит достигнут'}
+            >
+              + Добавить задачу
+            </AppButton>
+          </div>
         ) : (
           sortedTasks.map((task) => (
             <TaskCard
               key={task.id}
               task={task}
               column={column}
+              completed={isTaskCompleted(task, column, boardColumns)}
               disabled={disabled}
               draggable={!disabled}
               onOpen={onOpenTask}
-              onMoveNext={(item) => next && onMoveTask(item.id, next.id)}
-              onMovePrevious={(item) => previous && onMoveTask(item.id, previous.id)}
-              canMoveNext={Boolean(next)}
-              canMovePrevious={Boolean(previous)}
             />
           ))
         )}
       </div>
 
-      <AppButton
-        variant="text"
-        size="sm"
-        className="kb-column__add"
-        onClick={() => onCreateTask(column.id)}
-        disabled={disabled || !acceptsTask}
-        title={acceptsTask ? 'Добавить задачу в колонку' : 'WIP-лимит достигнут: сначала завершите задачу'}
-      >
-        + Задача
-      </AppButton>
+      {sortedTasks.length > 0 ? (
+        <AppButton
+          variant="text"
+          size="sm"
+          className="kb-column__add"
+          onClick={() => onCreateTask(column.id)}
+          disabled={disabled || !acceptsTask}
+          title={acceptsTask ? 'Добавить задачу в колонку' : 'WIP-лимит достигнут: сначала завершите задачу'}
+        >
+          + Добавить задачу
+        </AppButton>
+      ) : null}
     </section>
   )
 }

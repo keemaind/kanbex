@@ -1,22 +1,37 @@
-import { useState } from 'react'
-import { Link } from 'react-router'
+import { useState, type ReactNode } from 'react'
+import { Link, useNavigate } from 'react-router'
 import { AppButton, AppDialog, EmptyState, LoadingState, StatusBadge } from '@kanbex/ui'
-import { ProjectCreateDialog, ProjectRow, useProjects } from '../features/boards/index.js'
+import { ProjectCreateDialog, ProjectRow, boardTemplates, useProjects } from '../features/boards/index.js'
 import { useAuth } from '../features/auth/index.js'
-import { ArrowForwardIcon, PlusIcon } from '../app/icons.js'
+import { createBoardFromTemplate } from '../services/boardsApi.js'
+import { ExpressiveShape, type ExpressiveShapeName } from '../app/expressiveShapes.js'
+import { ArrowForwardIcon, CodeIcon, GroupsIcon, PersonIcon, PlusIcon, SchoolIcon } from '../app/icons.js'
 import { describeApiError } from '../services/api.js'
 import type { BoardSummary, ProjectInput } from '../types/index.js'
 
+const templateIcons: Record<string, ReactNode> = {
+  student: <SchoolIcon />,
+  developer: <CodeIcon />,
+  manager: <GroupsIcon />,
+  personal: <PersonIcon />,
+}
+
+/** Каждой карточке шаблона — своя форма из Shape Sequence. */
+const templateShapes: readonly ExpressiveShapeName[] = ['softBurst', 'cookie9', 'sunny', 'cookie4']
+
 /**
- * Главный экран: приветствие, создание проекта и последние проекты
- * с прогрессом по колонке «Готово».
+ * Главная страница: готовые сценарии (создание доски по шаблону через API),
+ * персонализация темы и последние проекты с прогрессом по колонке «Готово».
  */
 export function HomePage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const { projects, loading, error, reload, addProject, removeProject } = useProjects()
   const [createOpen, setCreateOpen] = useState(false)
   const [projectToDelete, setProjectToDelete] = useState<BoardSummary | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [creatingTemplate, setCreatingTemplate] = useState<string | null>(null)
+  const [templateError, setTemplateError] = useState<string | null>(null)
 
   const firstName = user?.displayName.trim().split(/\s+/)[0] ?? 'друг'
   const visibleProjects = projects.slice(0, 3)
@@ -41,6 +56,17 @@ export function HomePage() {
     })
   }
 
+  const handleUseTemplate = (templateKey: string) => {
+    setCreatingTemplate(templateKey)
+    setTemplateError(null)
+    createBoardFromTemplate(templateKey)
+      .then((board) => navigate(`/boards/${board.id}`))
+      .catch((cause: unknown) => {
+        setCreatingTemplate(null)
+        setTemplateError(describeApiError(cause))
+      })
+  }
+
   return (
     <div className="kb-home">
       <header className="kb-home__head">
@@ -55,6 +81,40 @@ export function HomePage() {
           Создать проект
         </AppButton>
       </header>
+
+      <section className="kb-home__section" aria-labelledby="kb-home-use-cases">
+        <h2 className="kb-home__section-title" id="kb-home-use-cases">
+          Шаблоны под ваш стиль работы
+        </h2>
+        <div className="kb-home__templates">
+          {boardTemplates.map((template, index) => (
+            <article key={template.key} className="kb-template-card">
+              <span className="kb-template-card__shape" aria-hidden="true">
+                <ExpressiveShape
+                  name={templateShapes[index % templateShapes.length]!}
+                  className="kb-template-card__shape-svg"
+                />
+                <span className="kb-template-card__shape-icon">{templateIcons[template.key]}</span>
+              </span>
+              <h3 className="kb-template-card__title">{template.title}</h3>
+              <p className="kb-template-card__text">{template.description}</p>
+              <AppButton
+                variant="filled"
+                size="sm"
+                disabled={creatingTemplate !== null}
+                onClick={() => handleUseTemplate(template.key)}
+              >
+                {creatingTemplate === template.key ? 'Создаём…' : 'Попробовать этот шаблон'}
+              </AppButton>
+            </article>
+          ))}
+        </div>
+        {templateError ? (
+          <div role="alert">
+            <StatusBadge tone="danger" withDot>{templateError}</StatusBadge>
+          </div>
+        ) : null}
+      </section>
 
       <div className="kb-home__section-head">
         <h2 className="kb-home__section-title">Мои проекты</h2>

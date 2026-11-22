@@ -1,6 +1,11 @@
 import type { CurrentUser, LoginRequest, RegisterRequest } from '../types/index.js'
 import { toApiError } from './api.js'
 
+export interface ChangePasswordRequest {
+  currentPassword: string
+  newPassword: string
+}
+
 interface AntiforgeryTokenResponse {
   requestToken: string
 }
@@ -128,4 +133,20 @@ export async function logout(): Promise<void> {
     requestToken = null
     currentUserRequest = Promise.resolve(null)
   }
+}
+
+/** Обновляет отображаемое имя (`POST /api/auth/display-name`). */
+export async function updateDisplayName(displayName: string): Promise<CurrentUser> {
+  const user = await postJson<CurrentUser>('/api/auth/display-name', { displayName })
+  if (!user) {
+    throw new Error('API вернул пустой ответ.')
+  }
+
+  currentUserRequest = Promise.resolve(user)
+  return user
+}
+
+/** Меняет пароль (`POST /api/auth/change-password`). */
+export async function changePassword(request: ChangePasswordRequest): Promise<void> {
+  await postJson('/api/auth/change-password', request)
 }

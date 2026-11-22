@@ -30,6 +30,39 @@ export function canAcceptTask(column: BoardColumn): boolean {
   return column.wipLimit === null || column.tasks.length < column.wipLimit
 }
 
+/** Прогресс доски: доля карточек, дошедших до финального этапа. */
+export interface BoardProgress {
+  /** Карточек в последней колонке — этапе «Готово». */
+  completed: number
+  /** Всего карточек на доске. */
+  total: number
+  /** Процент завершённых, округлённый до целого. */
+  percent: number
+}
+
+/**
+ * Считает прогресс по данным доски: завершённые — карточки последней
+ * колонки потока, процент — их доля от общего числа.
+ */
+export function getBoardProgress(board: Board): BoardProgress {
+  const ordered = [...board.columns].sort((left, right) => left.order - right.order)
+  const lastColumn = ordered.length > 0 ? ordered[ordered.length - 1] : undefined
+  const total = ordered.reduce((sum, column) => sum + column.tasks.length, 0)
+  const completed = lastColumn ? lastColumn.tasks.length : 0
+  const percent = total === 0 ? 0 : Math.round((completed / total) * 100)
+
+  return { completed, total, percent }
+}
+
+/**
+ * Завершена ли карточка: она лежит в последней колонке потока —
+ * этапе «Готово».
+ */
+export function isTaskCompleted(task: TaskCard, column: BoardColumn, columns: BoardColumn[]): boolean {
+  const lastOrder = columns.reduce((max, candidate) => Math.max(max, candidate.order), Number.NEGATIVE_INFINITY)
+  return column.order === lastOrder && column.tasks.some((item) => item.id === task.id)
+}
+
 /** Генерирует идентификатор для новых карточек и колонок. */
 export function createId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -199,6 +232,23 @@ export function deleteTaskFromBoard(board: Board, taskId: string): DeleteTaskRes
       ),
     },
     deleted: true,
+  }
+}
+
+export interface ClearTasksResult {
+  board: Board
+  /** Сколько карточек было удалено. */
+  cleared: number
+}
+
+/** Удаляет все карточки со всех колонок, сохраняя сами колонки и WIP-лимиты. */
+export function clearAllTasksFromBoard(board: Board): ClearTasksResult {
+  const cleared = board.columns.reduce((sum, column) => sum + column.tasks.length, 0)
+  if (cleared === 0) return { board, cleared: 0 }
+
+  return {
+    board: { ...board, columns: board.columns.map((column) => ({ ...column, tasks: [] })) },
+    cleared,
   }
 }
 

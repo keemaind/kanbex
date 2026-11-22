@@ -41,6 +41,24 @@ public sealed class BoardsController(BoardService boardService) : ControllerBase
         }
     }
 
+    [HttpPost("template/{templateKey}")]
+    public async Task<ActionResult<BoardResponse>> CreateFromTemplate(string templateKey, CancellationToken cancellationToken)
+    {
+        var ownerId = GetOwnerId();
+        if (ownerId is null) return Unauthorized();
+
+        var board = await boardService.CreateFromTemplateAsync(templateKey, ownerId, cancellationToken);
+        if (board is null)
+        {
+            return Problem(
+                statusCode: StatusCodes.Status404NotFound,
+                title: "Шаблон не найден.",
+                detail: "Выберите один из доступных шаблонов доски.");
+        }
+
+        return CreatedAtAction(nameof(Details), new { boardId = board.Id }, board);
+    }
+
     [HttpGet("{boardId:guid}")]
     public async Task<ActionResult<BoardResponse>> Details(Guid boardId, CancellationToken cancellationToken)
     {

@@ -13,6 +13,7 @@
 | `AppHeader` | Верхняя панель с навигацией и слотами действий. |
 | `EmptyState` | Пустое состояние с пояснением и действием. |
 | `KanbexLogo` | Встроенный SVG-логотип с палитрой бренда. |
+| `KanbexMark` | Компактный знак Kanbex (три карточки и буквенный знак) для узких мест вроде навигационной панели. |
 | `LoadingState` | Индикация ожидания. |
 | `StatusBadge` | Метка приоритета или статуса. |
 | `AppTextField`, `AppSelect`, `AppOption`, `AppIconButton`, `AppLinearProgress`, `AppMenu`, `AppMenuItem`, `AppNavigationDrawer`, `AppNavigationDrawerItem`, `AppThemeProvider` | Алиасы Material-компонентов из `m3-expressive-react`, чтобы приложение не импортировало стороннюю библиотеку напрямую. |
@@ -31,9 +32,10 @@ import '@kanbex/ui/styles.css'
 из `m3-expressive-react`, поэтому библиотека автоматически следует теме
 основного приложения. `@kanbex/ui/styles.css` импортирует стили
 `m3-expressive-react/styles.css`, так что приложению достаточно одного импорта.
-Фирменные цвета логотипа доступны как `--kb-color-violet`,
-`--kb-color-violet-soft`, `--kb-color-red`, `--kb-color-red-soft`,
-`--kb-color-green`, `--kb-color-green-soft`.
+Фирменная палитра Kanbex доступна как `--kb-color-lilac`,
+`--kb-color-lilac-soft`, `--kb-color-purple`, `--kb-color-coral`,
+`--kb-color-coral-soft`, `--kb-color-green`, `--kb-color-green-soft`,
+`--kb-color-workspace`, `--kb-color-ink`, `--kb-color-ink-secondary`.
 
 ## Тесты
 

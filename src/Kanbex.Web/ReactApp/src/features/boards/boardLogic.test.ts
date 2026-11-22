@@ -3,10 +3,13 @@ import type { Board, BoardColumn, TaskCard } from '../../types/index.js'
 import {
   addTaskToColumn,
   canAcceptTask,
+  clearAllTasksFromBoard,
   deleteTaskFromBoard,
+  getBoardProgress,
   getNextColumn,
   getPreviousColumn,
   getWipState,
+  isTaskCompleted,
   moveTaskToColumn,
   normalizeColumns,
   replaceColumnsInBoard,
@@ -71,6 +74,50 @@ describe('canAcceptTask', () => {
 
   it('rejects a full column', () => {
     expect(canAcceptTask(column('progress', 1, [task('a')], 1))).toBe(false)
+  })
+})
+
+describe('getBoardProgress', () => {
+  it('counts only the last column as completed', () => {
+    expect(getBoardProgress(board())).toEqual({ completed: 0, total: 3, percent: 0 })
+  })
+
+  it('rounds the percentage of completed tasks', () => {
+    const source = board()
+    source.columns[2].tasks = [task('x'), task('y'), task('z')]
+
+    expect(getBoardProgress(source)).toEqual({ completed: 3, total: 6, percent: 50 })
+  })
+
+  it('returns zero for an empty board', () => {
+    const empty: Board = { ...board(), columns: [] }
+
+    expect(getBoardProgress(empty)).toEqual({ completed: 0, total: 0, percent: 0 })
+  })
+})
+
+describe('isTaskCompleted', () => {
+  it('marks a task of the last column as completed', () => {
+    const columns = board().columns
+    const completed = task('c')
+    columns[2].tasks = [completed]
+
+    expect(isTaskCompleted(completed, columns[2], columns)).toBe(true)
+  })
+
+  it('keeps tasks of earlier columns active', () => {
+    const columns = board().columns
+    const done = task('c')
+    columns[2].tasks = [done]
+
+    expect(isTaskCompleted(task('a'), columns[0], columns)).toBe(false)
+    expect(isTaskCompleted(done, columns[1], columns)).toBe(false)
+  })
+
+  it('is false for a task that is not in the column', () => {
+    const columns = board().columns
+
+    expect(isTaskCompleted(task('a'), columns[2], columns)).toBe(false)
   })
 })
 
@@ -216,6 +263,29 @@ describe('deleteTaskFromBoard', () => {
     const result = deleteTaskFromBoard(source, 'missing')
 
     expect(result.deleted).toBe(false)
+    expect(result.board).toBe(source)
+  })
+})
+
+describe('clearAllTasksFromBoard', () => {
+  it('removes every card from all columns and counts them', () => {
+    const result = clearAllTasksFromBoard(board())
+
+    expect(result.cleared).toBe(3)
+    expect(result.board.columns.map((item) => item.tasks)).toEqual([[], [], []])
+    // Колонки и WIP-лимиты остаются на месте.
+    expect(result.board.columns.map((item) => [item.id, item.wipLimit])).toEqual([
+      ['todo', null],
+      ['progress', 1],
+      ['done', null],
+    ])
+  })
+
+  it('keeps the board unchanged when there is nothing to clear', () => {
+    const source: Board = { ...board(), columns: [column('todo', 0, [])] }
+    const result = clearAllTasksFromBoard(source)
+
+    expect(result.cleared).toBe(0)
     expect(result.board).toBe(source)
   })
 })

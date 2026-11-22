@@ -30,6 +30,106 @@ public sealed class BoardService(KanbexDbContext dbContext)
         ]),
     ];
 
+    private sealed record BoardTemplate(
+        string Title,
+        string Description,
+        (string Name, int? WipLimit, (string Title, string Description, TaskPriority Priority)[] Tasks)[] Columns);
+
+    /// <summary>
+    /// Готовые сценарии использования: каждая аудитория получает доску
+    /// с предустановленными колонками и карточками (seed data).
+    /// </summary>
+    private static readonly Dictionary<string, BoardTemplate> Templates = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["student"] = new(
+            "Учебная доска",
+            "Шаблон для студента: дисциплины, дедлайны и подготовка к экзаменам под контролем.",
+            [
+                ("К выполнению", null,
+                [
+                    ("Составить план на семестр", "Разложите дисциплины по неделям и отметьте дедлайны.", TaskPriority.Medium),
+                    ("Найти материалы к коллоквиуму", "Соберите конспекты, лекции и список вопросов.", TaskPriority.Low),
+                    ("Выбрать тему курсовой", "Запишите 3–5 тем и обсудите их с научным руководителем.", TaskPriority.Medium),
+                ]),
+                ("В работе", 2,
+                [
+                    ("Подготовиться к лабораторной №1", "Повторите теорию и набросайте ход работы.", TaskPriority.High),
+                    ("Написать конспект к семинару", "Кратко зафиксируйте главные тезисы.", TaskPriority.Medium),
+                ]),
+                ("Готово", null,
+                [
+                    ("Записаться на курс", "Дисциплина выбрана и добавлена в учебный план.", TaskPriority.Low),
+                ]),
+            ]),
+        ["developer"] = new(
+            "Пет-проект",
+            "Шаблон для разработчика: от идеи в бэклоге до код-ревью и релиза.",
+            [
+                ("Backlog", null,
+                [
+                    ("Завести репозиторий и CI", "Настройте сборку и автотесты на каждый push.", TaskPriority.High),
+                    ("Спроектировать схему БД", "Опишите сущности и связи до первой миграции.", TaskPriority.Medium),
+                    ("Собрать референсы интерфейса", "Подберите 3–5 примеров, как должен выглядеть экран.", TaskPriority.Low),
+                ]),
+                ("В работе", 2,
+                [
+                    ("Сверстать главный экран", "Соберите каркас интерфейса по выбранным референсам.", TaskPriority.High),
+                    ("Подключить API", "Настройте клиент и обработку ошибок.", TaskPriority.Medium),
+                ]),
+                ("Код-ревью", null,
+                [
+                    ("Покрыть сервисы тестами", "Проверьте, что ключевая логика покрыта unit-тестами.", TaskPriority.Medium),
+                ]),
+                ("Готово", null,
+                [
+                    ("Придумать идею проекта", "Идея зафиксирована в README.", TaskPriority.Low),
+                ]),
+            ]),
+        ["manager"] = new(
+            "Задачи команды",
+            "Шаблон для менеджера: планирование, синхронизация и статус по целям.",
+            [
+                ("Задачи", null,
+                [
+                    ("Провести планирование спринта", "Соберите команду и зафиксируйте цели спринта.", TaskPriority.High),
+                    ("Обновить дорожную карту", "Сверьте сроки и приоритеты проектов.", TaskPriority.Medium),
+                    ("Собрать обратную связь", "Спросите команду, что мешает работе.", TaskPriority.Low),
+                ]),
+                ("В работе", 3,
+                [
+                    ("Подготовить статус-отчёт", "Соберите метрики и прогресс по целям.", TaskPriority.Medium),
+                    ("Синхронизировать зависимые задачи", "Проверьте, что блокеры разрешены.", TaskPriority.High),
+                ]),
+                ("На проверке", null,
+                [
+                    ("Проверить результаты релиза", "Убедитесь, что релиз соответствует плану.", TaskPriority.Medium),
+                ]),
+                ("Готово", null,
+                [
+                    ("Провести ретроспективу", "Команда обсудила итоги спринта.", TaskPriority.Low),
+                ]),
+            ]),
+        ["personal"] = new(
+            "Личные дела",
+            "Шаблон для личных задач: список дел на неделю без перегруза.",
+            [
+                ("Сделать", null,
+                [
+                    ("Составить список дел на неделю", "Выпишите всё, что требует внимания.", TaskPriority.Medium),
+                    ("Запланировать поездку на выходные", "Маршрут, билеты и бюджет.", TaskPriority.Low),
+                    ("Навести порядок в закладках", "Разложите сохранённые статьи по папкам.", TaskPriority.Low),
+                ]),
+                ("В процессе", 2,
+                [
+                    ("Разобрать входящие", "Почта, заметки и документы.", TaskPriority.Low),
+                ]),
+                ("Готово", null,
+                [
+                    ("Составить список покупок", "Список готов и всегда под рукой.", TaskPriority.Low),
+                ]),
+            ]),
+    };
+
     public async Task<IReadOnlyList<BoardSummaryResponse>> ListAsync(string ownerId, CancellationToken cancellationToken)
     {
         var projects = await dbContext.Projects
@@ -85,7 +185,39 @@ public sealed class BoardService(KanbexDbContext dbContext)
             Version = 0,
         };
 
-        project.Columns = CreateInitialColumns(project.Id, ownerId, now);
+        project.Columns = CreateColumns(project.Id, ownerId, now, InitialBoard);
+
+        dbContext.Projects.Add(project);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return ToResponse(project);
+    }
+
+    /// <summary>
+    /// Создаёт доску по готовому шаблону: предустановленные колонки и
+    /// карточки для конкретного сценария использования.
+    /// </summary>
+    public async Task<BoardResponse?> CreateFromTemplateAsync(
+        string templateKey,
+        string ownerId,
+        CancellationToken cancellationToken)
+    {
+        if (!Templates.TryGetValue(templateKey, out var template))
+        {
+            return null;
+        }
+
+        var now = DateTime.UtcNow;
+        var project = new Project
+        {
+            Name = template.Title,
+            Description = NormalizeDescription(template.Description),
+            OwnerId = ownerId,
+            CreatedAt = now,
+            UpdatedAt = now,
+            Version = 0,
+        };
+
+        project.Columns = CreateColumns(project.Id, ownerId, now, template.Columns);
 
         dbContext.Projects.Add(project);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -130,7 +262,7 @@ public sealed class BoardService(KanbexDbContext dbContext)
             return null;
         }
 
-        dbContext.Columns.AddRange(CreateInitialColumns(boardId, ownerId, now));
+        dbContext.Columns.AddRange(CreateColumns(boardId, ownerId, now, InitialBoard));
         await dbContext.SaveChangesAsync(cancellationToken);
         dbContext.ChangeTracker.Clear();
 
@@ -424,9 +556,13 @@ public sealed class BoardService(KanbexDbContext dbContext)
         return null;
     }
 
-    private static List<KanbanColumn> CreateInitialColumns(Guid projectId, string reporterId, DateTime now)
+    private static List<KanbanColumn> CreateColumns(
+        Guid projectId,
+        string reporterId,
+        DateTime now,
+        (string Name, int? WipLimit, (string Title, string Description, TaskPriority Priority)[] Tasks)[] columns)
     {
-        return InitialBoard.Select((column, columnIndex) =>
+        return columns.Select((column, columnIndex) =>
         {
             var boardColumn = new KanbanColumn
             {

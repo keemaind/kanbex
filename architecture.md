@@ -56,11 +56,11 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 │   │   │   └── _ViewImports.cshtml
 │   │   ├── ReactApp/
 │   │   │   ├── src/
-│   │   │   │   ├── app/                     # корень React, провайдеры и guard
+│   │   │   │   ├── app/                     # корень React, тема, аватар, guard
 │   │   │   │   ├── pages/                   # страницы клиентского приложения
 │   │   │   │   ├── features/
 │   │   │   │   │   ├── auth/                # формы Identity и состояние сессии
-│   │   │   │   │   └── boards/              # доски, WIP, тесты логики
+│   │   │   │   │   └── boards/              # доски, шаблоны, WIP, тесты логики
 │   │   │   │   ├── routes/                  # React Router
 │   │   │   │   ├── services/                # типизированные HTTP API-клиенты
 │   │   │   │   ├── types/                   # DTO и UI-типы
@@ -72,6 +72,7 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 │   │   │   ├── tsconfig.json
 │   │   │   ├── vite.config.ts
 │   │   │   ├── jest.config.cjs
+│   │   │   ├── jest.setup.cjs                # настройка Testing Library
 │   │   │   ├── babel.config.cjs
 │   │   │   └── eslint.config.js
 │   │   ├── wwwroot/
@@ -99,8 +100,10 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 │   │   │   │   ├── AppButton/                # компонент и unit-тест
 │   │   │   │   ├── AppDialog/                # компонент и unit-тест
 │   │   │   │   ├── AppHeader/                # компонент и unit-тест
+│   │   │   │   ├── AppMaterial/              # алиасы Material-компонентов
 │   │   │   │   ├── EmptyState/               # компонент и unit-тест
 │   │   │   │   ├── KanbexLogo/               # логотип и unit-тест
+│   │   │   │   ├── KanbexMark/               # компактный знак и unit-тест
 │   │   │   │   ├── LoadingState/             # компонент и unit-тест
 │   │   │   │   └── StatusBadge/              # компонент и unit-тест
 │   │   │   ├── styles/components.css          # токены --kb-color-* и стили компонентов
@@ -144,7 +147,7 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 
 - `HomeController` / `Home/Index.cshtml` и `Home/Error.cshtml` — MVC-хост и страница ошибки.
 - `HomeController.BoardSpa` — Razor-хост React для `/board` и `/boards`, включая вложенные клиентские маршруты.
-- `LoginPage`, `RegisterPage`, `HomePage`, `AboutPage`, `BoardsPage`, `BoardPage`, `AccountPage`, `NotFoundPage` — клиентские страницы.
+- `LoginPage`, `RegisterPage`, `HomePage`, `AboutPage`, `BoardsPage`, `BoardPage`, `SettingsPage`, `ProfilePage`, `NotFoundPage` — клиентские страницы.
 - `MainMenuLayout` — dismissible-меню на `NavigationDrawer` с кнопкой Toggle Sidebar для главного экрана, проектов, доски, «О нас» и настроек.
 - `App`, `AppRouter`, `MainMenuLayout`, `RequireAuth` — корень SPA, маршруты, общая оболочка и клиентский guard.
 - `LoginForm`, `RegisterForm`, `AuthProvider` — формы входа/регистрации и состояние серверной cookie-сессии.
@@ -153,7 +156,7 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 - `features/boards/boardLogic.ts` и `pluralize.ts` — чистые функции WIP-проверок, перемещения и подписей; покрыты тестами. `useProjects` загружает список и выполняет создание/удаление через API, `useBoard` загружает доску и сохраняет её полной заменой.
 - `features/auth/AuthProvider.tsx` загружает текущего пользователя через `GET /api/auth/me`, хранит `initializing`/`pending` и вызывает `/api/auth/*` для входа, регистрации и выхода.
 
-`HomeController` также обслуживает прямые переходы на клиентские маршруты `/login`, `/register`, `/account`, `/boards/*` и `/board/*`, чтобы `BrowserRouter` не получал 404 от сервера. Для остальных URL без расширения работает fallback на Razor-хост SPA, поэтому прямой заход на неизвестный адрес показывает клиентскую `NotFoundPage`; `/api/*` при этом по-прежнему возвращает `404`.
+`HomeController` также обслуживает прямые переходы на клиентские маршруты `/login`, `/register`, `/settings`, `/boards/*` и `/board/*`, чтобы `BrowserRouter` не получал 404 от сервера. Для остальных URL без расширения работает fallback на Razor-хост SPA, поэтому прямой заход на неизвестный адрес показывает клиентскую `NotFoundPage`; `/api/*` при этом по-прежнему возвращает `404`.
 
 ### 4.2. Kanbex.Infrastructure — EF Core и Identity persistence
 
@@ -166,9 +169,9 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 - Connection string задаётся конфигурацией `Kanbex.Web`. Локальный файл базы не включается в исходный контроль версий, если не является специально подготовленным демо-артефактом.
 - Модель покрывает проекты (по одной Kanban-доске на проект), участников, колонки, задачи, историю, комментарии, теги и связи задач с тегами. Приоритет задачи, событие истории и роль участника проекта представлены C#-перечислениями и хранятся строками.
 - Ограничения БД включают уникальность участия пользователя в проекте, уникальность имени тега в проекте, согласованность проекта у задачи и её колонки, а также проверки WIP-лимита, оценок и позиций. `Project.Version` служит токеном конкурентного изменения.
-- `KanbexDbContextFactory` позволяет запускать `dotnet ef` непосредственно с инфраструктурным проектом. Например: `dotnet ef migrations add <ИмяМиграции> --project src/Kanbex.Infrastructure --startup-project src/Kanbex.Infrastructure --output-dir Persistence/Migrations`, затем `dotnet ef database update` с теми же параметрами. Design-time factory использует локальную строку `Data Source=kanbex.db`; приложение позднее должно передавать рабочую строку подключения из конфигурации `Kanbex.Web`.
+- `KanbexDbContextFactory` позволяет запускать `dotnet ef` непосредственно с инфраструктурным проектом. Например: `dotnet ef migrations add <ИмяМиграции> --project src/Kanbex.Infrastructure --startup-project src/Kanbex.Infrastructure --output-dir Persistence/Migrations`, затем `dotnet ef database update` с теми же параметрами. Design-time factory ищет корень решения и использует ту же базу `src/Kanbex.Web/kanbex.db`, что и приложение, поэтому `dotnet ef database update` обновляет рабочую базу.
 - В локальной разработке миграции применяются через `dotnet ef database update`. Автоматическое применение при старте допустимо для учебной среды; для развёртывания предпочтительны контролируемые миграции.
-- `Kanbex.Web` читает строку подключения из `ConnectionStrings:Kanbex` (`Data Source=kanbex.db` по умолчанию) и в Development сам применяет миграции при старте, затем идемпотентно создаёт роли `Admin`/`User` и демонстрационную учётную запись `student@kanbex.local` (флаг `SeedDemoUser`). В production миграции и сиды не запускаются автоматически.
+- `Kanbex.Web` читает строку подключения из `ConnectionStrings:Kanbex` (`Data Source=kanbex.db` по умолчанию; относительный путь якорится на content root приложения) и в Development сам применяет миграции при старте, затем идемпотентно создаёт роли `Admin`/`User` и демонстрационную учётную запись `student@kanbex.local` (флаг `SeedDemoUser`). В production миграции и сиды не запускаются автоматически.
 - Identity настраивается через `AddIdentity<ApplicationUser, IdentityRole>` с EF Core-хранилищем и same-origin cookie `Kanbex.Auth`. Для путей `/api/*` неаутентифицированный запрос получает `401`, а недостаток прав — `403`, без HTML-редиректа на страницу входа. Для изменяющих состояние запросов регистрируется antiforgery с заголовком `X-CSRF-TOKEN`.
 
 ### 4.3. Kanbex.UI — библиотека общих React-компонентов
@@ -180,6 +183,7 @@ Kanbex — учебный цифровой симулятор Kanban-систе�
 - `AppHeader` — общая верхняя панель.
 - `EmptyState` — пустое состояние с объяснением и действием.
 - `KanbexLogo` — встроенный SVG-логотип с фирменной палитрой.
+- `KanbexMark` — компактный SVG-знак Kanbex для узких мест вроде навигационной рельсы.
 - `LoadingState` — индикация ожидания.
 - `StatusBadge` — метка приоритета/статуса.
 - `AppTextField`, `AppSelect`, `AppOption`, `AppIconButton`, `AppLinearProgress`, `AppMenu`, `AppMenuItem`, `AppNavigationDrawer`, `AppNavigationDrawerItem`, `AppThemeProvider` — алиасы Material-компонентов. Приложение импортирует их из `@kanbex/ui` и не обращается к `m3-expressive-react` напрямую.
@@ -222,8 +226,11 @@ API размещается в `Kanbex.Web` под префиксом `/api`. Web
 | `POST /api/auth/login` | `{ email, password }` | `200 CurrentUser`; установить cookie-сессию | `400` неверный формат, `401` неверные учётные данные |
 | `POST /api/auth/logout` | antiforgery-заголовок | `204`; удалить cookie-сессию | `401` нет сессии, `400` неверный antiforgery-токен |
 | `GET /api/auth/me` | — | `200 CurrentUser` | `401` нет сессии |
+| `POST /api/auth/display-name` | `{ displayName }` | `200 CurrentUser` с обновлённым именем | `400` ошибки полей, `401` нет сессии |
+| `POST /api/auth/change-password` | `{ currentPassword, newPassword }` | `200 CurrentUser`; security stamp cookie обновлён | `400` неверный текущий пароль/политика паролей, `401` нет сессии |
 | `GET /api/boards` | — | `200 BoardSummary[]` | `401` нет сессии |
 | `POST /api/boards` | `{ title, description }` | `201 Board`; `Location: /api/boards/{id}` | `400` ошибки полей, `401` нет сессии |
+| `POST /api/boards/template/{templateKey}` | — | `201 Board`; предустановленные колонки и карточки | `401` нет сессии, `404` неизвестный шаблон |
 | `GET /api/boards/{boardId}` | — | `200 Board` | `401` нет сессии, `404` не найдена или недоступна |
 | `PUT /api/boards/{boardId}` | `{ title, description, version, columns }` | `200 Board`; новая версия включена в ответ | `400` ошибки полей, `401` нет сессии, `404` не найдена или недоступна, `409` WIP/конфликт версии |
 | `POST /api/boards/{boardId}/reset` | antiforgery-заголовок | `200 Board`; начальные колонки, карточки и новая версия | `401` нет сессии, `404` не найдена или недоступна |
@@ -301,7 +308,7 @@ API размещается в `Kanbex.Web` под префиксом `/api`. Web
 | любой URL без расширения | `HomeController.SpaFallback` | Хост SPA для неизвестного клиентского адреса; `/api/*` получает `404`. | Открытый хост. |
 | `/login` | `HomeController.Spa` | Хост страницы входа React. | Открытый |
 | `/register` | `HomeController.Spa` | Хост страницы регистрации React. | Открытый |
-| `/account` | `HomeController.Spa` | Хост профиля пользователя. | Клиентский guard; в MVP — `[Authorize]`. |
+| `/settings` | `HomeController.Spa` | Хост страницы настроек. | Клиентский guard; в MVP — `[Authorize]`. |
 | `/Identity/Account/Login` | `HomeController.IdentityLogin` | Совместимый редирект на `/login`. | Открытый |
 | `/Identity/Account/Register` | `HomeController.IdentityRegister` | Совместимый редирект на `/register`. | Открытый |
 | `/Identity/Account/Logout` | `HomeController.IdentityLogout` | Совместимый редирект на `/login`. | Открытый; в MVP — POST с CSRF. |
@@ -325,7 +332,7 @@ RequireAuth + MainMenuLayout
   /boards/:boardId        -> BoardPage
   /board/:boardId         -> BoardPage (алиас)
   /about                  -> AboutPage
-  /account                -> AccountPage
+  /settings               -> SettingsPage
 *                         -> NotFoundPage
 ```
 

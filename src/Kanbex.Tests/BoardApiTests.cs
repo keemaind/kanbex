@@ -277,6 +277,27 @@ public sealed class BoardApiTests : IClassFixture<KanbexApiFactory>
         Assert.Equal(1, updated.Columns[1].Order);
     }
 
+    [Fact]
+    public async Task CreateFromTemplate_SeedsPresetColumnsAndTasks()
+    {
+        using var client = CreateClient();
+        await LoginAsync(client, "student@kanbex.local", "Student1");
+        var token = await GetTokenAsync(client);
+
+        var createResponse = await SendJsonAsync(client, HttpMethod.Post, "/api/boards/template/developer", body: null, token);
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        var board = (await createResponse.Content.ReadFromJsonAsync<BoardResponse>(JsonOptions))!;
+        Assert.Equal("Пет-проект", board.Title);
+        Assert.Equal(4, board.Columns.Count);
+        Assert.Equal("Backlog", board.Columns[0].Title);
+        Assert.Equal(3, board.Columns[0].Tasks.Count);
+        Assert.Equal(2, board.Columns[1].WipLimit);
+        Assert.Single(board.Columns[3].Tasks);
+
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await SendJsonAsync(client, HttpMethod.Post, "/api/boards/template/unknown", body: null, token)).StatusCode);
+    }
+
     private static UpdateBoardRequest AsUpdateRequest(BoardResponse board, string title) => new(
         title,
         board.Description,

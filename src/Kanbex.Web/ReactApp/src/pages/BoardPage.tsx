@@ -1,15 +1,27 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
-import { AppButton, AppDialog, EmptyState, LoadingState, StatusBadge } from '@kanbex/ui'
+import {
+  AppButton,
+  AppDialog,
+  AppIconButton,
+  AppMenu,
+  AppMenuItem,
+  EmptyState,
+  LoadingState,
+  StatusBadge,
+} from '@kanbex/ui'
 import {
   BoardDetailsDialog,
   ColumnManagerDialog,
   KanbanBoard,
   TaskCreateDialog,
   TaskEditDialog,
+  getBoardProgress,
+  pluralize,
   useBoard,
 } from '../features/boards/index.js'
 import type { NewTaskInput, TaskEditValues } from '../features/boards/index.js'
+import { ArrowBackIcon, FolderIcon, MoreIcon, PlusIcon } from '../app/icons.js'
 import type { TaskCard as TaskCardModel } from '../types/index.js'
 
 const boardIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -17,8 +29,8 @@ const boardIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 type SaveTone = 'info' | 'danger' | 'warning' | 'success'
 
 /**
- * Представление доски: канбан-колонки, редактирование карточек и колонок.
- * Идентификатор, существование и доступ проверяются API.
+ * Рабочая область проекта: шапка с прогрессом, панель создания задачи
+ * и канбан-доска. Идентификатор, существование и доступ проверяются API.
  */
 export function BoardPage() {
   const { boardId = '' } = useParams()
@@ -36,6 +48,7 @@ export function BoardPage() {
     addTask,
     updateTask,
     deleteTask,
+    clearTasks,
     updateBoard,
     replaceColumns,
     reset,
@@ -49,6 +62,7 @@ export function BoardPage() {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [columnsOpen, setColumnsOpen] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
+  const [clearOpen, setClearOpen] = useState(false)
   const [notice, setNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null)
 
   useEffect(() => {
@@ -97,6 +111,8 @@ export function BoardPage() {
 
   if (!board) return null
 
+  const progress = getBoardProgress(board)
+  const quickAddColumn = [...board.columns].sort((a, b) => a.order - b.order)[0] ?? null
   const wipRejection = lastMove?.rejection === 'wip-limit'
   const createColumn = createColumnId
     ? board.columns.find((column) => column.id === createColumnId) ?? null
@@ -116,14 +132,14 @@ export function BoardPage() {
         ? 'warning'
         : 'success'
   const saveLabel = saving
-    ? 'Сохраняем…'
+    ? 'Сохранение…'
     : conflict
       ? 'Конфликт версии'
       : saveError
-        ? 'Не удалось сохранить'
+        ? 'Ошибка сохранения'
         : dirty
-          ? 'Есть несохранённые изменения'
-          : 'Все изменения сохранены'
+          ? 'Есть изменения'
+          : 'Сохранено'
 
   const handleCreateTask = (input: NewTaskInput) => {
     if (!createColumnId) return
@@ -154,52 +170,93 @@ export function BoardPage() {
   }
 
   return (
-    <div className="kb-page">
-      <div className="kb-page__head">
-        <div>
-          <nav className="kb-breadcrumb" aria-label="Хлебные крошки">
-            <Link to="/boards">Проекты</Link>
-            <span aria-hidden="true">/</span>
-            <span>{board.title}</span>
-          </nav>
-          <h1 className="kb-page__title">{board.title}</h1>
-          <p className="kb-page__lead">{board.description}</p>
+    <div className="kb-workspace">
+      <header className="kb-project-header">
+        <div className="kb-project-header__main">
+          <Link className="kb-project-header__back" to="/boards">
+            <ArrowBackIcon />
+            Мои проекты
+          </Link>
+          <div className="kb-project-header__row">
+            <span className="kb-project-header__icon" aria-hidden="true">
+              <FolderIcon />
+            </span>
+            <div className="kb-project-header__titles">
+              <h1 className="kb-project-header__title">{board.title}</h1>
+              {board.description ? <p className="kb-project-header__lead">{board.description}</p> : null}
+            </div>
+            <div
+              className="kb-project-header__progress"
+              title={`Завершено ${progress.completed} из ${progress.total} задач`}
+            >
+              <span className="kb-project-header__progress-value">{progress.percent}%</span>
+              <span className="kb-project-header__progress-track" aria-hidden="true">
+                <span
+                  className="kb-project-header__progress-bar"
+                  style={{ width: `${progress.percent}%` }}
+                />
+              </span>
+              <span className="kb-project-header__progress-caption">
+                {progress.completed} из {progress.total}
+              </span>
+            </div>
+            <span className={`kb-save-indicator kb-save-indicator--${saveTone}`}>
+              <span className="kb-save-indicator__dot" aria-hidden="true" />
+              {saveLabel}
+            </span>
+          </div>
         </div>
-        <div className="kb-page__actions">
-          <StatusBadge tone={saveTone} withDot>
-            {saveLabel}
-          </StatusBadge>
-          <AppButton variant="text" size="sm" onClick={() => setColumnsOpen(true)}>
-            Колонки
-          </AppButton>
-          <AppButton variant="text" size="sm" onClick={() => setDetailsOpen(true)}>
-            Настройки
-          </AppButton>
-          <AppButton variant="outlined" size="sm" disabled={saving} onClick={() => setResetOpen(true)}>
-            Сбросить
-          </AppButton>
-          <AppButton
-            variant="filled"
-            size="sm"
-            disabled={saving || !dirty}
-            onClick={() => void save().catch(() => undefined)}
+        <div className="kb-project-header__tools">
+          <AppMenu
+            align="end"
+            aria-label="Меню доски"
+            trigger={
+              <AppIconButton variant="standard" size="sm" icon={<MoreIcon />} aria-label="Меню доски" />
+            }
           >
-            {saving ? 'Сохраняем…' : 'Сохранить'}
-          </AppButton>
+            <AppMenuItem onClick={() => setDetailsOpen(true)}>Настройки проекта</AppMenuItem>
+            <AppMenuItem
+              disabled={saving || !dirty}
+              onClick={() => void save().catch(() => undefined)}
+            >
+              Сохранить
+            </AppMenuItem>
+            <AppMenuItem disabled={saving || progress.total === 0} onClick={() => setClearOpen(true)}>
+              Очистить задачи
+            </AppMenuItem>
+            <AppMenuItem disabled={saving} onClick={() => setResetOpen(true)}>
+              Сбросить доску
+            </AppMenuItem>
+          </AppMenu>
         </div>
+      </header>
+
+      <div className="kb-toolbar">
+        <AppButton
+          variant="filled"
+          size="sm"
+          className="kb-add-task"
+          startIcon={<PlusIcon />}
+          disabled={quickAddColumn === null}
+          title={quickAddColumn ? 'Добавить задачу в первую колонку' : 'Сначала добавьте колонку'}
+          onClick={() => quickAddColumn && setCreateColumnId(quickAddColumn.id)}
+        >
+          Добавить задачу
+        </AppButton>
+        <AppButton variant="outlined" size="sm" onClick={() => setColumnsOpen(true)}>
+          Настройки колонок
+        </AppButton>
       </div>
 
-      <div className="kb-board-layout">
-        <KanbanBoard
-          board={board}
-          onMoveTask={(taskId, targetColumnId) => {
-            setNotice(null)
-            moveTask(taskId, targetColumnId)
-          }}
-          onOpenTask={(task) => setEditTaskId(task.id)}
-          onCreateTask={(columnId) => setCreateColumnId(columnId)}
-        />
-      </div>
+      <KanbanBoard
+        board={board}
+        onMoveTask={(taskId, targetColumnId) => {
+          setNotice(null)
+          moveTask(taskId, targetColumnId)
+        }}
+        onOpenTask={(task) => setEditTaskId(task.id)}
+        onCreateTask={(columnId) => setCreateColumnId(columnId)}
+      />
 
       {saveError ? <StatusBadge tone="danger" withDot>{saveError}</StatusBadge> : null}
       <div className="kb-board__feedback" role="status" aria-live="polite">
@@ -274,6 +331,23 @@ export function BoardPage() {
           onCancel={() => setColumnsOpen(false)}
         />
       ) : null}
+
+      <AppDialog
+        open={clearOpen}
+        title="Удалить все задачи?"
+        description={`С доски исчезнут ${progress.total} ${pluralize(progress.total, [
+          'карточка',
+          'карточки',
+          'карточек',
+        ])}. Колонки и WIP-лимиты останутся. Отменить действие нельзя.`}
+        confirmLabel="Удалить все"
+        onConfirm={() => {
+          setClearOpen(false)
+          const cleared = clearTasks()
+          setNotice({ tone: 'success', text: `Удалено карточек: ${cleared}.` })
+        }}
+        onCancel={() => setClearOpen(false)}
+      />
 
       <AppDialog
         open={resetOpen}

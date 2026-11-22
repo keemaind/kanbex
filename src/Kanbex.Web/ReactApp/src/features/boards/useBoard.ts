@@ -4,6 +4,7 @@ import { fetchBoard, resetBoard, saveBoard } from '../../services/boardsApi.js'
 import { ApiError } from '../../services/api.js'
 import {
   addTaskToColumn,
+  clearAllTasksFromBoard,
   deleteTaskFromBoard,
   moveTaskToColumn,
   replaceColumnsInBoard,
@@ -28,6 +29,8 @@ export interface UseBoardResult {
   addTask: (columnId: string, input: NewTaskInput) => AddTaskResult | null
   updateTask: (taskId: string, patch: Partial<Pick<TaskCard, 'title' | 'description' | 'priority'>>) => TaskCard | null
   deleteTask: (taskId: string) => boolean
+  /** Удаляет все карточки со всех колонок, возвращает число удалённых. */
+  clearTasks: () => number
   updateBoard: (patch: Partial<Pick<Board, 'title' | 'description'>>) => void
   replaceColumns: (columns: BoardColumn[]) => void
   reset: () => Promise<void>
@@ -236,6 +239,16 @@ export function useBoard(boardId: string): UseBoardResult {
     return true
   }, [board, markDirty])
 
+  const clearTasks = useCallback(() => {
+    if (!board) return 0
+    const result = clearAllTasksFromBoard(board)
+    if (result.cleared === 0) return 0
+
+    setBoard(result.board)
+    markDirty()
+    return result.cleared
+  }, [board, markDirty])
+
   const updateBoard = useCallback((patch: Partial<Pick<Board, 'title' | 'description'>>) => {
     if (!board) return
     if (patch.title === board.title && patch.description === board.description) return
@@ -263,6 +276,7 @@ export function useBoard(boardId: string): UseBoardResult {
     addTask,
     updateTask,
     deleteTask,
+    clearTasks,
     updateBoard,
     replaceColumns,
     reset,

@@ -15,6 +15,7 @@ public sealed class SpaHostTests : IClassFixture<KanbexApiFactory>
 
     [Theory]
     [InlineData("/login")]
+    [InlineData("/settings")]
     [InlineData("/boards")]
     [InlineData("/boards/not-a-guid")]
     [InlineData("/missing-page")]

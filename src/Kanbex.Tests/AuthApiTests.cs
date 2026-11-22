@@ -187,6 +187,157 @@ public sealed class AuthApiTests : IClassFixture<KanbexApiFactory>
         Assert.Equal(HttpStatusCode.OK, meResponse.StatusCode);
     }
 
+    [Fact]
+    public async Task UpdateDisplayName_TrimsAndPersistsName()
+    {
+        using var client = CreateClient();
+        await RegisterUniqueUserAsync(client);
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var response = await PostJsonAsync(
+            client,
+            "/api/auth/display-name",
+            new { displayName = "  Иван Петров  " },
+            token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = await response.Content.ReadFromJsonAsync<CurrentUserResponse>();
+        Assert.Equal("Иван Петров", updated?.DisplayName);
+
+        var meResponse = await client.GetAsync("/api/auth/me");
+        var current = await meResponse.Content.ReadFromJsonAsync<CurrentUserResponse>();
+        Assert.Equal("Иван Петров", current?.DisplayName);
+    }
+
+    [Fact]
+    public async Task UpdateDisplayName_WithInvalidLength_ReturnsValidationProblem()
+    {
+        using var client = CreateClient();
+        await RegisterUniqueUserAsync(client);
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var tooShort = await PostJsonAsync(
+            client, "/api/auth/display-name", new { displayName = "  a  " }, token);
+        Assert.Equal(HttpStatusCode.BadRequest, tooShort.StatusCode);
+        var shortProblem = await tooShort.Content.ReadFromJsonAsync<ValidationProblemResponse>();
+        Assert.True(shortProblem?.Errors.ContainsKey("DisplayName"));
+
+        var tooLong = await PostJsonAsync(
+            client, "/api/auth/display-name", new { displayName = new string('a', 121) }, token);
+        Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
+        var longProblem = await tooLong.Content.ReadFromJsonAsync<ValidationProblemResponse>();
+        Assert.True(longProblem?.Errors.ContainsKey("DisplayName"));
+    }
+
+    [Fact]
+    public async Task UpdateDisplayName_WithoutSession_ReturnsUnauthorized()
+    {
+        using var client = CreateClient();
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var response = await PostJsonAsync(
+            client, "/api/auth/display-name", new { displayName = "Без сессии" }, token);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangePassword_UpdatesPasswordAndKeepsSession()
+    {
+        using var client = CreateClient();
+        var email = await RegisterUniqueUserAsync(client);
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var response = await PostJsonAsync(
+            client,
+            "/api/auth/change-password",
+            new { currentPassword = DemoPassword, newPassword = "NewPassword1" },
+            token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        // Смена пароля не должна рвать текущую cookie-сессию.
+        var meResponse = await client.GetAsync("/api/auth/me");
+        Assert.Equal(HttpStatusCode.OK, meResponse.StatusCode);
+
+        using var freshClient = CreateClient();
+        var freshToken = await GetAntiforgeryTokenAsync(freshClient);
+        var oldLogin = await PostJsonAsync(
+            freshClient, "/api/auth/login", new { email, password = DemoPassword }, freshToken);
+        Assert.Equal(HttpStatusCode.Unauthorized, oldLogin.StatusCode);
+
+        var newLogin = await PostJsonAsync(
+            freshClient, "/api/auth/login", new { email, password = "NewPassword1" }, freshToken);
+        Assert.Equal(HttpStatusCode.OK, newLogin.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangePassword_WithWrongCurrentPassword_ReturnsValidationProblem()
+    {
+        using var client = CreateClient();
+        await RegisterUniqueUserAsync(client);
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var response = await PostJsonAsync(
+            client,
+            "/api/auth/change-password",
+            new { currentPassword = "Wrong1", newPassword = "NewPassword1" },
+            token);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemResponse>();
+        Assert.True(problem?.Errors.ContainsKey("PasswordMismatch"));
+
+        var meResponse = await client.GetAsync("/api/auth/me");
+        Assert.Equal(HttpStatusCode.OK, meResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task ChangePassword_WithWeakPassword_ReturnsValidationProblem()
+    {
+        using var client = CreateClient();
+        await RegisterUniqueUserAsync(client);
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var response = await PostJsonAsync(
+            client,
+            "/api/auth/change-password",
+            new { currentPassword = DemoPassword, newPassword = "short" },
+            token);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemResponse>();
+        Assert.True(problem?.Errors.ContainsKey("PasswordTooShort"));
+    }
+
+    [Fact]
+    public async Task ChangePassword_WithoutSession_ReturnsUnauthorized()
+    {
+        using var client = CreateClient();
+        var token = await GetAntiforgeryTokenAsync(client);
+
+        var response = await PostJsonAsync(
+            client,
+            "/api/auth/change-password",
+            new { currentPassword = DemoPassword, newPassword = "NewPassword1" },
+            token);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    private async Task<string> RegisterUniqueUserAsync(HttpClient client)
+    {
+        var email = $"profile-{Guid.NewGuid():N}@kanbex.local";
+        var token = await GetAntiforgeryTokenAsync(client);
+        var response = await PostJsonAsync(
+            client,
+            "/api/auth/register",
+            new { displayName = "Профиль Тест", email, password = DemoPassword },
+            token);
+        response.EnsureSuccessStatusCode();
+        return email;
+    }
+
     private HttpClient CreateClient() =>
         _factory.CreateClient(new WebApplicationFactoryClientOptions
         {
@@ -225,6 +376,8 @@ public sealed class AuthApiTests : IClassFixture<KanbexApiFactory>
     }
 
     private sealed record TokenResponse(string RequestToken);
+
+    private sealed record ValidationProblemResponse(Dictionary<string, string[]> Errors);
 
     private sealed record CurrentUserResponse(string Id, string DisplayName, string Email);
 }

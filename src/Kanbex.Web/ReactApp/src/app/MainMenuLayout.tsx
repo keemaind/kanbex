@@ -1,26 +1,20 @@
 import { useState } from 'react'
-import { Link, Outlet, useLocation, useNavigate } from 'react-router'
+import { Outlet, useLocation, useNavigate } from 'react-router'
 import {
   AppIconButton,
-  AppNavigationDrawer,
-  AppNavigationDrawerItem,
-  KanbexLogo,
+  AppNavigationRail,
+  AppNavigationRailAction,
+  AppNavigationRailItem,
 } from '@kanbex/ui'
 import { useAuth } from '../features/auth/index.js'
-import {
-  ChevronDownIcon,
-  FolderIcon,
-  HomeIcon,
-  InfoIcon,
-  SettingsIcon,
-  SidebarIcon,
-} from './icons.js'
+import { useStoredAvatar } from './avatar.js'
+import { FolderIcon, HomeIcon, InfoIcon, MenuIcon, MenuOpenIcon, SettingsIcon } from './icons.js'
 
 const destinations = [
   { value: 'home', label: 'Главная', path: '/home', icon: <HomeIcon /> },
   { value: 'projects', label: 'Проекты', path: '/boards', icon: <FolderIcon /> },
   { value: 'about', label: 'О нас', path: '/about', icon: <InfoIcon /> },
-  { value: 'settings', label: 'Настройки', path: '/account', icon: <SettingsIcon /> },
+  { value: 'settings', label: 'Настройки', path: '/settings', icon: <SettingsIcon /> },
 ] as const
 
 function getActiveDestination(pathname: string): string {
@@ -34,7 +28,7 @@ function getActiveDestination(pathname: string): string {
     return 'projects'
   }
   if (pathname === '/about') return 'about'
-  if (pathname === '/account') return 'settings'
+  if (pathname === '/settings') return 'settings'
   return ''
 }
 
@@ -48,113 +42,71 @@ function getInitials(name: string): string {
 }
 
 /**
- * Оболочка главного экрана: постоянное боковое меню и область контента.
- * Пункты меню повторяют основную навигацию приложения.
+ * Оболочка главного экрана: боковая навигационная панель (rail) и область
+ * контента. Пункты меню идут сверху вниз, компактный знак Kanbex и кнопка
+ * меню закреплены в шапке рельсы — кнопка разворачивает и сворачивает
+ * пункты с подписями.
  */
 export function MainMenuLayout() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const [open, setOpen] = useState(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true
-    return window.matchMedia('(min-width: 961px)').matches
-  })
+  const avatar = useStoredAvatar()
   const active = getActiveDestination(pathname)
-
-  const closeOnMobile = () => {
-    if (
-      typeof window !== 'undefined' &&
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(max-width: 960px)').matches
-    ) {
-      setOpen(false)
-    }
-  }
+  const [expanded, setExpanded] = useState(false)
 
   return (
     <div className="kb-menu">
-      <AppNavigationDrawer
-        id="kb-main-menu"
-        className="kb-menu__drawer"
-        variant="dismissible"
-        open={open}
-        onClose={() => setOpen(false)}
+      <AppNavigationRail
+        id="kb-main-rail"
+        className="kb-menu__rail"
+        variant={expanded ? 'expanded' : 'collapsed'}
+        arrangement="top"
         value={active}
         aria-label="Главное меню"
-      >
-        <div className="kb-menu__brand-row">
-          <Link
-            className="kb-menu__brand"
-            to="/home"
-            aria-label="Kanbex — на главную"
-            onClick={closeOnMobile}
-          >
-            <KanbexLogo height={30} />
-          </Link>
-          <AppIconButton
-            className="kb-menu__toggle"
-            variant="standard"
-            size="xs"
-            icon={<SidebarIcon />}
-            aria-label="Скрыть боковое меню"
-            aria-expanded={open}
-            aria-controls="kb-main-menu"
-            onClick={() => setOpen(false)}
-          />
-        </div>
-
-        <nav className="kb-menu__nav" aria-label="Разделы">
-          {destinations.map((destination) => (
-            <AppNavigationDrawerItem
-              key={destination.value}
-              value={destination.value}
-              icon={destination.icon}
-              label={destination.label}
-              onClick={() => {
-                navigate(destination.path)
-                closeOnMobile()
-              }}
-            />
-          ))}
-        </nav>
-
-        <div className="kb-menu__spacer" />
-
-        {user ? (
-          <button
-            type="button"
-            className="kb-menu__user"
-            onClick={() => {
-              navigate('/account')
-              closeOnMobile()
-            }}
-          >
-            <span className="kb-menu__avatar" aria-hidden="true">{getInitials(user.displayName)}</span>
-            <span className="kb-menu__user-text">
-              <span className="kb-menu__user-name">{user.displayName}</span>
-              <span className="kb-menu__user-email">{user.email}</span>
-            </span>
-            <span className="kb-menu__chevron" aria-hidden="true">
-              <ChevronDownIcon />
-            </span>
-          </button>
-        ) : null}
-      </AppNavigationDrawer>
-
-      <main className="kb-menu__content">
-        <div className="kb-menu__toolbar">
-          {!open ? (
+        header={
+          <div className="kb-menu__rail-header">
             <AppIconButton
               variant="standard"
               size="sm"
-              icon={<SidebarIcon />}
-              aria-label="Показать боковое меню"
-              aria-expanded={false}
-              aria-controls="kb-main-menu"
-              onClick={() => setOpen(true)}
+              icon={expanded ? <MenuOpenIcon /> : <MenuIcon />}
+              aria-label={expanded ? 'Свернуть меню' : 'Развернуть меню'}
+              aria-expanded={expanded}
+              aria-controls="kb-main-rail"
+              onClick={() => setExpanded((current) => !current)}
             />
-          ) : null}
-        </div>
+          </div>
+        }
+      >
+        {destinations.map((destination) => (
+          <AppNavigationRailItem
+            key={destination.value}
+            value={destination.value}
+            icon={destination.icon}
+            label={destination.label}
+            onClick={() => navigate(destination.path)}
+          />
+        ))}
+        {user ? (
+          <AppNavigationRailAction
+            className="kb-menu__rail-user"
+            icon={
+              avatar ? (
+                <img className="kb-menu__avatar-image" src={avatar} alt="" />
+              ) : (
+                <span className="kb-menu__avatar" aria-hidden="true">
+                  {getInitials(user.displayName)}
+                </span>
+              )
+            }
+            label={user.displayName}
+            aria-label={`Профиль: ${user.displayName}`}
+            onClick={() => navigate('/profile')}
+          />
+        ) : null}
+      </AppNavigationRail>
+
+      <main className="kb-menu__content">
         <Outlet />
       </main>
     </div>

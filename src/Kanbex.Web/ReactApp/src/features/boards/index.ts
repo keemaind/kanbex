@@ -9,15 +9,20 @@ export { TaskEditDialog, type TaskEditDialogProps, type TaskEditValues } from '.
 export { BoardDetailsDialog, type BoardDetailsDialogProps, type BoardDetailsValues } from './BoardDetailsDialog.js'
 export { ColumnManagerDialog, type ColumnManagerDialogProps } from './ColumnManagerDialog.js'
 export { useProjects, type UseProjectsResult } from './useProjects.js'
+export { boardTemplates, type BoardTemplateInfo } from './boardTemplates.js'
 export { pluralize, type PluralForms } from './pluralize.js'
 export {
   addTaskToColumn,
   canAcceptTask,
+  clearAllTasksFromBoard,
+  getBoardProgress,
   getNextColumn,
   getPreviousColumn,
   getWipState,
+  isTaskCompleted,
   moveTaskToColumn,
   type AddTaskResult,
+  type BoardProgress,
   type MoveTaskResult,
   type NewTaskInput,
 } from './boardLogic.js'

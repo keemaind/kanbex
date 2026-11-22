@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { AppButton, AppTextField } from '@kanbex/ui'
+import { AppButton, AppIconButton, AppTextField } from '@kanbex/ui'
+import { EyeIcon, EyeOffIcon } from '../../app/icons.js'
 import type { LoginRequest } from '../../types/index.js'
 
 export interface LoginFormProps {
@@ -14,6 +15,7 @@ export interface LoginFormProps {
 export function LoginForm({ onSubmit, pending = false, error = null }: LoginFormProps) {
   const [email, setEmail] = useState('student@kanbex.local')
   const [password, setPassword] = useState('Student1')
+  const [showPassword, setShowPassword] = useState(false)
   const [fieldError, setFieldError] = useState<string | null>(null)
 
   const message = fieldError ?? error
@@ -45,13 +47,23 @@ export function LoginForm({ onSubmit, pending = false, error = null }: LoginForm
       />
       <AppTextField
         label="Пароль"
-        type="password"
+        type={showPassword ? 'text' : 'password'}
         name="password"
         autoComplete="current-password"
         value={password}
         onChange={(event) => setPassword(event.target.value)}
         required
         error={Boolean(message)}
+        endIcon={
+          <AppIconButton
+            variant="standard"
+            size="xs"
+            type="button"
+            icon={showPassword ? <EyeOffIcon /> : <EyeIcon />}
+            aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+            onClick={() => setShowPassword((current) => !current)}
+          />
+        }
       />
       {message ? (
         <p className="kb-form__error" role="alert">

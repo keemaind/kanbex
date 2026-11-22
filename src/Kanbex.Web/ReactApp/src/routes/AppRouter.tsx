@@ -1,13 +1,14 @@
 import { Navigate, Route, Routes } from 'react-router'
 import {
   AboutPage,
-  AccountPage,
-  BoardPage,
   BoardsPage,
+  BoardPage,
   HomePage,
   LoginPage,
   NotFoundPage,
+  ProfilePage,
   RegisterPage,
+  SettingsPage,
 } from '../pages/index.js'
 import { MainMenuLayout } from '../app/MainMenuLayout.js'
 import { RequireAuth } from '../app/RequireAuth.js'
@@ -37,7 +38,8 @@ export function AppRouter() {
         {/* Серверный путь /board из architecture.md — тот же SPA-хост. */}
         <Route path="/board/:boardId" element={<BoardPage />} />
         <Route path="/about" element={<AboutPage />} />
-        <Route path="/account" element={<AccountPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

@@ -62,6 +62,11 @@ export async function createBoard(title: string, description = ''): Promise<Boar
   return mutate('/api/boards', 'POST', { title, description })
 }
 
+/** Создаёт доску по готовому шаблону: предустановленные колонки и задачи. */
+export async function createBoardFromTemplate(templateKey: string): Promise<Board> {
+  return mutate<Board>(`/api/boards/template/${encodeURIComponent(templateKey)}`, 'POST')
+}
+
 export async function saveBoard(board: Board): Promise<BoardSaveResult> {
   const saved = await mutate<Board>(`/api/boards/${encodeURIComponent(board.id)}`, 'PUT', {
     title: board.title,

@@ -9,7 +9,6 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
-import { StatusBadge } from '@kanbex/ui'
 import type { Board, TaskCard as TaskCardModel } from '../../types/index.js'
 import { BoardColumn } from './BoardColumn.js'
 
@@ -22,8 +21,9 @@ export interface KanbanBoardProps {
 }
 
 /**
- * Канбан-доска: горизонтально прокручиваемая сетка колонок с drag-and-drop
- * между этапами. Перетаскивание — дополнение, а не замена кнопкам на карточке.
+ * Канбан-доска: одна горизонтальная строка колонок равной ширины и высоты
+ * с drag-and-drop между этапами. Перетаскивание — дополнение, а не замена
+ * кнопкам на карточке.
  */
 export function KanbanBoard({ board, disabled = false, onMoveTask, onOpenTask, onCreateTask }: KanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<TaskCardModel | null>(null)
@@ -51,20 +51,8 @@ export function KanbanBoard({ board, disabled = false, onMoveTask, onOpenTask, o
     if (taskId && targetColumnId) onMoveTask(taskId, targetColumnId)
   }
 
-  const totalTasks = orderedColumns.reduce((total, column) => total + column.tasks.length, 0)
-
   return (
     <div className="kb-board">
-      <div className="kb-board__meta">
-        <StatusBadge tone="info" withDot>
-          {orderedColumns.length} этапа
-        </StatusBadge>
-        <StatusBadge tone="neutral">{totalTasks} задач всего</StatusBadge>
-        <span className="kb-board__hint">
-          Перетащите карточку за ручку ⠿ или используйте кнопки «Назад» / «Далее» на карточке.
-        </span>
-      </div>
-
       <DndContext
         sensors={sensors}
         onDragStart={handleDragStart}
@@ -79,7 +67,6 @@ export function KanbanBoard({ board, disabled = false, onMoveTask, onOpenTask, o
               boardColumns={orderedColumns}
               disabled={disabled}
               onOpenTask={onOpenTask}
-              onMoveTask={onMoveTask}
               onCreateTask={onCreateTask}
             />
           ))}

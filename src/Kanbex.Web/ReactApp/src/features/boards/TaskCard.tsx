@@ -1,19 +1,18 @@
 import { useDraggable } from '@dnd-kit/core'
-import { AppButton, StatusBadge } from '@kanbex/ui'
+import { StatusBadge } from '@kanbex/ui'
 import type { BadgeTone } from '@kanbex/ui'
 import type { BoardColumn as BoardColumnModel, TaskCard as TaskCardModel, TaskPriority } from '../../types/index.js'
+import { CheckIcon, DragIndicatorIcon } from '../../app/icons.js'
 
 export interface TaskCardProps {
   task: TaskCardModel
   column: BoardColumnModel
-  /** Блокирует кнопки, пока идёт «серверное» сохранение. */
+  /** Карточка на финальном этапе: зелёная галочка и зачёркнутый заголовок. */
+  completed?: boolean
+  /** Блокирует взаимодействие, пока идёт «серверное» сохранение. */
   disabled?: boolean
   onOpen: (task: TaskCardModel) => void
-  onMoveNext: (task: TaskCardModel) => void
-  onMovePrevious: (task: TaskCardModel) => void
-  canMoveNext: boolean
-  canMovePrevious: boolean
-  /** Включён ли режим перетаскивания (drag-and-drop — не единственный способ). */
+  /** Включён ли режим перетаскивания (drag-and-drop — единственный способ перемещения). */
   draggable?: boolean
 }
 
@@ -32,21 +31,16 @@ const priorityTones: Record<TaskPriority, BadgeTone> = {
 }
 
 /**
- * Карточка задачи. Остаётся в feature-коде доски, потому что знает о
- * приоритетах, порядках и перемещении между колонками.
- *
- * Перетаскивание доступно только за ручку (drag handle); кнопки «Назад» и
- * «Далее» дают эквивалентную клавиатурную альтернативу.
+ * Карточка задачи: заголовок, описание и метка приоритета. Перемещение между
+ * колонками — только через drag-and-drop за ручку (у ручки есть клавиатурная
+ * альтернатива: сенсор dnd-kit поддерживает перетаскивание с клавиатуры).
  */
 export function TaskCard({
   task,
   column,
+  completed = false,
   disabled = false,
   onOpen,
-  onMoveNext,
-  onMovePrevious,
-  canMoveNext,
-  canMovePrevious,
   draggable = true,
 }: TaskCardProps) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({
@@ -58,15 +52,21 @@ export function TaskCard({
   return (
     <article
       ref={setNodeRef}
-      className={isDragging ? 'kb-task kb-task--dragging' : 'kb-task'}
+      className={
+        completed ? 'kb-task kb-task--done' : isDragging ? 'kb-task kb-task--dragging' : 'kb-task'
+      }
       data-task-id={task.id}
-      aria-label={`Задача: ${task.title}`}
+      aria-label={`Задача: ${task.title}${completed ? ' (завершена)' : ''}`}
     >
       <div className="kb-task__head">
-        <StatusBadge tone={priorityTones[task.priority]} withDot>
-          {priorityLabels[task.priority]}
-        </StatusBadge>
-
+        {completed ? (
+          <span className="kb-task__check" title="Задача завершена" aria-hidden="true">
+            <CheckIcon />
+          </span>
+        ) : null}
+        <button type="button" className="kb-task__title" onClick={() => onOpen(task)}>
+          {task.title}
+        </button>
         <button
           ref={setActivatorNodeRef}
           type="button"
@@ -76,35 +76,16 @@ export function TaskCard({
           {...attributes}
           {...listeners}
         >
-          <span aria-hidden="true">⠿</span>
+          <DragIndicatorIcon />
         </button>
       </div>
 
-      <button type="button" className="kb-task__title" onClick={() => onOpen(task)}>
-        {task.title}
-      </button>
+      {task.description ? <p className="kb-task__description">{task.description}</p> : null}
 
-      <p className="kb-task__description">{task.description}</p>
-
-      <div className="kb-task__actions">
-        <AppButton
-          variant="text"
-          size="xs"
-          onClick={() => onMovePrevious(task)}
-          disabled={disabled || !canMovePrevious}
-          aria-label={`Вернуть задачу «${task.title}» на предыдущий этап`}
-        >
-          ← Назад
-        </AppButton>
-        <AppButton
-          variant="text"
-          size="xs"
-          onClick={() => onMoveNext(task)}
-          disabled={disabled || !canMoveNext}
-          aria-label={`Переместить задачу «${task.title}» на следующий этап`}
-        >
-          Далее →
-        </AppButton>
+      <div className="kb-task__foot">
+        <StatusBadge tone={priorityTones[task.priority]} withDot>
+          {priorityLabels[task.priority]}
+        </StatusBadge>
       </div>
     </article>
   )
