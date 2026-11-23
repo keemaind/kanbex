@@ -5,6 +5,14 @@ export interface NewTaskInput {
   title: string
   description?: string
   priority?: TaskPriority
+  /** Исполнитель — участник доски; `null` — не назначен. */
+  assigneeId?: string | null
+  /** Имя исполнителя для мгновенного показа на карточке; сервер пересчитает при сохранении. */
+  assigneeName?: string | null
+  /** Дедлайн в формате `YYYY-MM-DD`. */
+  dueDate?: string | null
+  /** Оценка 0–1000. */
+  estimate?: number | null
 }
 
 export interface AddTaskResult {
@@ -101,6 +109,12 @@ export function addTaskToColumn(board: Board, columnId: string, input: NewTaskIn
     description: input.description?.trim() ?? '',
     priority: input.priority ?? 'medium',
     order: column.tasks.length,
+    assigneeId: input.assigneeId ?? null,
+    assigneeName: input.assigneeName ?? null,
+    dueDate: input.dueDate ?? null,
+    estimate: input.estimate ?? null,
+    tags: [],
+    commentCount: 0,
   }
 
   return {
@@ -189,7 +203,7 @@ export function getPreviousColumn(board: Board, columnId: string): BoardColumn |
 export function updateTaskInBoard(
   board: Board,
   taskId: string,
-  patch: Partial<Pick<TaskCard, 'title' | 'description' | 'priority'>>,
+  patch: Partial<Pick<TaskCard, 'title' | 'description' | 'priority' | 'assigneeId' | 'dueDate' | 'estimate'>>,
 ): Board | null {
   const owner = board.columns.find((column) => column.tasks.some((task) => task.id === taskId))
   if (!owner) return null

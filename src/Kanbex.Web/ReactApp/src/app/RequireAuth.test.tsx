@@ -24,6 +24,7 @@ const demoUser: CurrentUser = {
   id: 'user-1',
   displayName: 'Студент Kanbex',
   email: 'student@kanbex.local',
+  avatarUrl: null,
 }
 
 function LocationProbe() {

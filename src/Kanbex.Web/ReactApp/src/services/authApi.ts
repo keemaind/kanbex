@@ -150,3 +150,59 @@ export async function updateDisplayName(displayName: string): Promise<CurrentUse
 export async function changePassword(request: ChangePasswordRequest): Promise<void> {
   await postJson('/api/auth/change-password', request)
 }
+
+/**
+ * Загружает аватар (multipart, поле `file`) и возвращает обновлённый DTO.
+ * `Content-Type` с boundary браузер ставит сам — задавать вручную нельзя.
+ */
+export async function uploadAvatar(file: File): Promise<CurrentUser> {
+  const token = requestToken ?? (await fetchRequestToken())
+  const form = new FormData()
+  form.append('file', file)
+
+  const response = await fetch('/api/auth/avatar', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+      Accept: 'application/json',
+      'X-CSRF-TOKEN': token,
+    },
+    body: form,
+  })
+
+  if (!response.ok) {
+    // 400 может означать устаревший antiforgery-токен: сбрасываем кеш.
+    if (response.status === 400) {
+      requestToken = null
+    }
+    throw await toApiError(response, 'Не удалось загрузить аватар.')
+  }
+
+  const user = (await response.json()) as CurrentUser
+  currentUserRequest = Promise.resolve(user)
+  return user
+}
+
+/** Удаляет аватар и возвращает обновлённый DTO пользователя. */
+export async function deleteAvatar(): Promise<CurrentUser> {
+  const token = requestToken ?? (await fetchRequestToken())
+  const response = await fetch('/api/auth/avatar', {
+    method: 'DELETE',
+    credentials: 'same-origin',
+    headers: {
+      Accept: 'application/json',
+      'X-CSRF-TOKEN': token,
+    },
+  })
+
+  if (!response.ok) {
+    if (response.status === 400) {
+      requestToken = null
+    }
+    throw await toApiError(response, 'Не удалось удалить аватар.')
+  }
+
+  const user = (await response.json()) as CurrentUser
+  currentUserRequest = Promise.resolve(user)
+  return user
+}

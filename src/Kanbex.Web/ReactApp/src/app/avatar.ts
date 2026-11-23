@@ -1,46 +1,32 @@
-import { useEffect, useState } from 'react'
-
-/** Аватар хранится на клиенте (localStorage, dataURL 160×160) —
- *  серверное хранение появится вместе с эндпоинтом профиля. */
-const AVATAR_KEY = 'kanbex.avatar'
-const AVATAR_EVENT = 'kanbex:avatar-changed'
+/** Помощники аватара: инициалы, клиентская валидация и кроп перед отправкой
+ *  на сервер (`POST /api/auth/avatar`). Сам аватар хранится на сервере. */
 const AVATAR_SIZE = 160
+const MAX_FILE_SIZE = 2 * 1024 * 1024
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
-export function readStoredAvatar(): string | null {
-  try {
-    return window.localStorage.getItem(AVATAR_KEY)
-  } catch {
-    return null
+/** Инициалы для fallback-аватара: первые буквы двух слов. */
+export function getInitials(name: string): string {
+  return (
+    name
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('') || 'K'
+  )
+}
+
+/** Проверяет тип и размер файла до отправки; возвращает текст ошибки или `null`. */
+export function validateAvatarFile(file: File): string | null {
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return 'Аватар — изображение JPEG, PNG или WebP.'
   }
-}
 
-export function storeAvatar(dataUrl: string): void {
-  window.localStorage.setItem(AVATAR_KEY, dataUrl)
-  window.dispatchEvent(new Event(AVATAR_EVENT))
-}
+  if (file.size > MAX_FILE_SIZE) {
+    return 'Файл больше 2 МБ — выберите изображение поменьше.'
+  }
 
-export function clearStoredAvatar(): void {
-  window.localStorage.removeItem(AVATAR_KEY)
-  window.dispatchEvent(new Event(AVATAR_EVENT))
-}
-
-/** Аватар с подпиской на изменения: рельс и страница профиля
- *  обновляются синхронно после загрузки или удаления фото. */
-export function useStoredAvatar(): string | null {
-  const [avatar, setAvatar] = useState(() => readStoredAvatar())
-
-  useEffect(() => {
-    const sync = () => setAvatar(readStoredAvatar())
-
-    window.addEventListener(AVATAR_EVENT, sync)
-    window.addEventListener('storage', sync)
-    return () => {
-      window.removeEventListener(AVATAR_EVENT, sync)
-      window.removeEventListener('storage', sync)
-    }
-  }, [])
-
-  return avatar
+  return null
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -61,8 +47,8 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   })
 }
 
-/** Квадратный кроп 160×160 + сжатие в JPEG, чтобы dataURL влезал в localStorage. */
-export async function fileToAvatarDataUrl(file: File): Promise<string> {
+/** Квадратный кроп 160×160 и сжатие в JPEG — файл для multipart-загрузки. */
+export async function fileToAvatarFile(file: File): Promise<File> {
   const dataUrl = await readFileAsDataUrl(file)
   const image = await loadImage(dataUrl)
 
@@ -70,11 +56,16 @@ export async function fileToAvatarDataUrl(file: File): Promise<string> {
   canvas.width = AVATAR_SIZE
   canvas.height = AVATAR_SIZE
   const context = canvas.getContext('2d')
-  if (!context) return dataUrl
+
+  if (!context) return file
 
   const scale = Math.max(AVATAR_SIZE / image.width, AVATAR_SIZE / image.height)
   const width = image.width * scale
   const height = image.height * scale
   context.drawImage(image, (AVATAR_SIZE - width) / 2, (AVATAR_SIZE - height) / 2, width, height)
-  return canvas.toDataURL('image/jpeg', 0.85)
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85))
+  if (!blob) return file
+
+  return new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
 }

@@ -1,6 +1,7 @@
 export {
   AppCarousel,
   AppCarouselItem,
+  AppDatePickerField,
   AppIconButton,
   AppLinearProgress,
   AppMenu,
@@ -18,6 +19,7 @@ export {
   AppThemeProvider,
   type AppCarouselItemProps,
   type AppCarouselProps,
+  type AppDatePickerFieldProps,
   type AppIconButtonProps,
   type AppLinearProgressProps,
   type AppMenuItemProps,

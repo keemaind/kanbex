@@ -7,13 +7,13 @@ import {
   AppNavigationRailItem,
 } from '@kanbex/ui'
 import { useAuth } from '../features/auth/index.js'
-import { useStoredAvatar } from './avatar.js'
+import { getInitials } from './avatar.js'
 import { FolderIcon, HomeIcon, InfoIcon, MenuIcon, MenuOpenIcon, SettingsIcon } from './icons.js'
 
 const destinations = [
   { value: 'home', label: 'Главная', path: '/home', icon: <HomeIcon /> },
   { value: 'projects', label: 'Проекты', path: '/boards', icon: <FolderIcon /> },
-  { value: 'about', label: 'О нас', path: '/about', icon: <InfoIcon /> },
+  { value: 'about', label: 'Kanbex', path: '/about', icon: <InfoIcon /> },
   { value: 'settings', label: 'Настройки', path: '/settings', icon: <SettingsIcon /> },
 ] as const
 
@@ -32,15 +32,6 @@ function getActiveDestination(pathname: string): string {
   return ''
 }
 
-function getInitials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('') || 'K'
-}
-
 /**
  * Оболочка главного экрана: боковая навигационная панель (rail) и область
  * контента. Пункты меню идут сверху вниз, компактный знак Kanbex и кнопка
@@ -51,7 +42,7 @@ export function MainMenuLayout() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const avatar = useStoredAvatar()
+  const avatarUrl = user?.avatarUrl ?? null
   const active = getActiveDestination(pathname)
   const [expanded, setExpanded] = useState(false)
 
@@ -91,8 +82,8 @@ export function MainMenuLayout() {
           <AppNavigationRailAction
             className="kb-menu__rail-user"
             icon={
-              avatar ? (
-                <img className="kb-menu__avatar-image" src={avatar} alt="" />
+              avatarUrl ? (
+                <img className="kb-menu__avatar-image" src={avatarUrl} alt="" />
               ) : (
                 <span className="kb-menu__avatar" aria-hidden="true">
                   {getInitials(user.displayName)}

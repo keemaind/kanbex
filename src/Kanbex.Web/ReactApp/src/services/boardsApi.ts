@@ -1,4 +1,12 @@
-import type { Board, BoardSummary } from '../types/index.js'
+import type {
+  Board,
+  BoardMember,
+  BoardSummary,
+  Comment,
+  PublicBoard,
+  Tag,
+  TaskHistoryEntry,
+} from '../types/index.js'
 import { toApiError } from './api.js'
 
 export type { ApiProblem } from './api.js'
@@ -83,6 +91,9 @@ export async function saveBoard(board: Board): Promise<BoardSaveResult> {
         description: task.description,
         priority: task.priority,
         order: task.order,
+        assigneeId: task.assigneeId ?? null,
+        dueDate: task.dueDate ?? null,
+        estimate: task.estimate ?? null,
       })),
     })),
   })
@@ -95,4 +106,120 @@ export async function deleteBoard(boardId: string): Promise<void> {
 
 export async function resetBoard(boardId: string): Promise<Board> {
   return mutate<Board>(`/api/boards/${encodeURIComponent(boardId)}/reset`, 'POST')
+}
+
+/** Переключает публичный доступ к доске (только Creator). */
+export async function setBoardVisibility(boardId: string, isPublic: boolean): Promise<void> {
+  await mutate<void>(`/api/boards/${encodeURIComponent(boardId)}/visibility`, 'PUT', { isPublic })
+}
+
+/** Список участников доски — Creator и Member. */
+export async function fetchBoardMembers(boardId: string): Promise<BoardMember[]> {
+  return request(`/api/boards/${encodeURIComponent(boardId)}/members`)
+}
+
+/** Добавляет участника по e-mail (только Creator). */
+export async function addBoardMember(boardId: string, email: string): Promise<BoardMember> {
+  return mutate<BoardMember>(`/api/boards/${encodeURIComponent(boardId)}/members`, 'POST', { email })
+}
+
+/** Удаляет участника доски (только Creator). */
+export async function removeBoardMember(boardId: string, memberUserId: string): Promise<void> {
+  await mutate<void>(
+    `/api/boards/${encodeURIComponent(boardId)}/members/${encodeURIComponent(memberUserId)}`,
+    'DELETE',
+  )
+}
+
+/** История изменений карточки — Creator и Member. */
+export async function fetchTaskHistory(boardId: string, taskId: string): Promise<TaskHistoryEntry[]> {
+  return request(
+    `/api/boards/${encodeURIComponent(boardId)}/tasks/${encodeURIComponent(taskId)}/history`,
+  )
+}
+
+/** Комментарии карточки — Creator и Member. */
+export async function fetchComments(boardId: string, taskId: string): Promise<Comment[]> {
+  return request(
+    `/api/boards/${encodeURIComponent(boardId)}/tasks/${encodeURIComponent(taskId)}/comments`,
+  )
+}
+
+/** Добавляет комментарий (1–4000 символов после trim). */
+export async function createComment(boardId: string, taskId: string, content: string): Promise<Comment> {
+  return mutate<Comment>(
+    `/api/boards/${encodeURIComponent(boardId)}/tasks/${encodeURIComponent(taskId)}/comments`,
+    'POST',
+    { content },
+  )
+}
+
+/** Удаляет комментарий: автор — свой, Creator — любой. */
+export async function deleteComment(
+  boardId: string,
+  taskId: string,
+  commentId: string,
+): Promise<void> {
+  await mutate<void>(
+    `/api/boards/${encodeURIComponent(boardId)}/tasks/${encodeURIComponent(taskId)}/comments/${encodeURIComponent(commentId)}`,
+    'DELETE',
+  )
+}
+
+/** Каталог тегов доски — Creator и Member. */
+export async function fetchTags(boardId: string): Promise<Tag[]> {
+  return request(`/api/boards/${encodeURIComponent(boardId)}/tags`)
+}
+
+/** Создаёт тег в каталоге доски (только Creator). */
+export async function createTag(boardId: string, name: string, color: string): Promise<Tag> {
+  return mutate<Tag>(`/api/boards/${encodeURIComponent(boardId)}/tags`, 'POST', { name, color })
+}
+
+/** Обновляет имя/цвет тега (только Creator). */
+export async function updateTag(
+  boardId: string,
+  tagId: string,
+  name: string,
+  color: string,
+): Promise<Tag> {
+  return mutate<Tag>(`/api/boards/${encodeURIComponent(boardId)}/tags/${encodeURIComponent(tagId)}`, 'PUT', {
+    name,
+    color,
+  })
+}
+
+/** Удаляет тег из каталога доски (только Creator). */
+export async function deleteTag(boardId: string, tagId: string): Promise<void> {
+  await mutate<void>(`/api/boards/${encodeURIComponent(boardId)}/tags/${encodeURIComponent(tagId)}`, 'DELETE')
+}
+
+/** Заменяет набор тегов карточки (Creator и Member). */
+export async function setTaskTags(
+  boardId: string,
+  taskId: string,
+  tagIds: string[],
+): Promise<Tag[]> {
+  return mutate<Tag[]>(
+    `/api/boards/${encodeURIComponent(boardId)}/tasks/${encodeURIComponent(taskId)}/tags`,
+    'PUT',
+    { tagIds },
+  )
+}
+
+/**
+ * Публичная read-only доска для `/share/{id}`. Запрос анонимный: без cookie и
+ * antiforgery. Приватная и несуществующая доска неразличимы — обе дают 404.
+ */
+export async function fetchPublicBoard(boardId: string): Promise<PublicBoard | null> {
+  const response = await fetch(`/api/public/boards/${encodeURIComponent(boardId)}`, {
+    headers: { Accept: 'application/json' },
+  })
+
+  if (response.status === 404) return null
+  if (!response.ok) {
+    throw await toApiError(response, 'Не удалось загрузить публичную доску.')
+  }
+
+  return (await response.json()) as PublicBoard
 }

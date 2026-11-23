@@ -38,4 +38,4 @@ public sealed record ChangePasswordRequest(
 /// Безопасный DTO текущего пользователя. Не содержит хэшей и служебных
 /// полей Identity; совпадает с `CurrentUser` в клиентских типах.
 /// </summary>
-public sealed record CurrentUserResponse(string Id, string DisplayName, string Email);
+public sealed record CurrentUserResponse(string Id, string DisplayName, string Email, string? AvatarUrl);

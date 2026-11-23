@@ -10,6 +10,8 @@ export interface BoardColumnProps {
   /** Все колонки доски — нужны, чтобы найти финальный этап. */
   boardColumns: BoardColumnModel[]
   disabled?: boolean
+  /** Read-only режим публичной доски: без кнопок добавления и перетаскивания. */
+  readOnly?: boolean
   onOpenTask: (task: TaskCardModel) => void
   onCreateTask: (columnId: string) => void
 }
@@ -23,6 +25,7 @@ export function BoardColumn({
   column,
   boardColumns,
   disabled = false,
+  readOnly = false,
   onOpenTask,
   onCreateTask,
 }: BoardColumnProps) {
@@ -66,16 +69,22 @@ export function BoardColumn({
             <span className="kb-column__empty-icon" aria-hidden="true">
               <NoteIcon />
             </span>
-            <p className="kb-column__empty-text">Перетащите сюда карточку или создайте новую</p>
-            <AppButton
-              variant="text"
-              size="sm"
-              onClick={() => onCreateTask(column.id)}
-              disabled={disabled || !acceptsTask}
-              title={acceptsTask ? 'Добавить задачу в колонку' : 'WIP-лимит достигнут'}
-            >
-              + Добавить задачу
-            </AppButton>
+            {readOnly ? (
+              <p className="kb-column__empty-text">В этой колонке пока нет карточек</p>
+            ) : (
+              <>
+                <p className="kb-column__empty-text">Перетащите сюда карточку или создайте новую</p>
+                <AppButton
+                  variant="text"
+                  size="sm"
+                  onClick={() => onCreateTask(column.id)}
+                  disabled={disabled || !acceptsTask}
+                  title={acceptsTask ? 'Добавить задачу в колонку' : 'WIP-лимит достигнут'}
+                >
+                  + Добавить задачу
+                </AppButton>
+              </>
+            )}
           </div>
         ) : (
           sortedTasks.map((task) => (
@@ -85,6 +94,7 @@ export function BoardColumn({
               column={column}
               completed={isTaskCompleted(task, column, boardColumns)}
               disabled={disabled}
+              readOnly={readOnly}
               draggable={!disabled}
               onOpen={onOpenTask}
             />
@@ -92,7 +102,7 @@ export function BoardColumn({
         )}
       </div>
 
-      {sortedTasks.length > 0 ? (
+      {sortedTasks.length > 0 && !readOnly ? (
         <AppButton
           variant="text"
           size="sm"

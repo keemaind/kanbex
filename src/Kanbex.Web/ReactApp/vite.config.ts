@@ -19,10 +19,15 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(programVersion),
   },
   server: {
-    // При открытии приложения на Vite (5173) запросы `/api/*` должны попадать
-    // в ASP.NET Core. На хосте 5130 прокси не используется.
+    // При открытии приложения на Vite (5173) запросы `/api/*` и аватары
+    // `/uploads/*` должны попадать в ASP.NET Core. На хосте 5130 прокси
+    // не используется.
     proxy: {
       '/api': {
+        target: 'http://localhost:5130',
+        changeOrigin: false,
+      },
+      '/uploads': {
         target: 'http://localhost:5130',
         changeOrigin: false,
       },

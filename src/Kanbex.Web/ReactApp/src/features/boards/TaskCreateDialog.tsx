@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { AppDialog, AppOption, AppSelect, AppTextField } from '@kanbex/ui'
-import type { TaskPriority } from '../../types/index.js'
+import { AppDatePickerField, AppDialog, AppOption, AppSelect, AppTextField } from '@kanbex/ui'
+import type { BoardMember, TaskPriority } from '../../types/index.js'
 import type { NewTaskInput } from './boardLogic.js'
+import { toApiDate } from './taskDates.js'
 
 export interface TaskCreateDialogProps {
   /** Название колонки, в которую попадёт карточка. */
   columnTitle: string
+  /** Участники доски — варианты исполнителя. */
+  members?: BoardMember[]
   onCreate: (input: NewTaskInput) => void
   onCancel: () => void
 }
@@ -18,14 +21,19 @@ const priorities: Array<{ value: TaskPriority; label: string }> = [
   { value: 'critical', label: 'Критический' },
 ]
 
+const NO_ASSIGNEE = ''
+
 /**
  * Диалог создания задачи. Проверяет только форму; WIP-лимит и позицию
  * повторно проверяет `addTaskToColumn`, чтобы правило не зависело от UI.
  */
-export function TaskCreateDialog({ columnTitle, onCreate, onCancel }: TaskCreateDialogProps) {
+export function TaskCreateDialog({ columnTitle, members, onCreate, onCancel }: TaskCreateDialogProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<TaskPriority>('medium')
+  const [assigneeId, setAssigneeId] = useState(NO_ASSIGNEE)
+  const [dueDate, setDueDate] = useState<Date | null>(null)
+  const [estimate, setEstimate] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = (event?: FormEvent<HTMLFormElement>) => {
@@ -37,13 +45,31 @@ export function TaskCreateDialog({ columnTitle, onCreate, onCancel }: TaskCreate
       return
     }
 
+    const trimmedEstimate = estimate.trim()
+    const estimateValue = trimmedEstimate === '' ? null : Number(trimmedEstimate)
+    if (estimateValue !== null && (!Number.isInteger(estimateValue) || estimateValue < 0 || estimateValue > 1000)) {
+      setError('Оценка — целое число от 0 до 1000.')
+      return
+    }
+
+    const assignee = members?.find((member) => member.userId === assigneeId) ?? null
+
     setError(null)
-    onCreate({ title: trimmedTitle, description: description.trim(), priority })
+    onCreate({
+      title: trimmedTitle,
+      description: description.trim(),
+      priority,
+      assigneeId: assignee?.userId ?? null,
+      assigneeName: assignee?.displayName ?? null,
+      dueDate: toApiDate(dueDate),
+      estimate: estimateValue,
+    })
   }
 
   return (
     <AppDialog
       open
+      className="kb-dialog--wide"
       title="Новая задача"
       description={`Карточка появится в колонке «${columnTitle}».`}
       confirmLabel="Создать задачу"
@@ -76,19 +102,60 @@ export function TaskCreateDialog({ columnTitle, onCreate, onCancel }: TaskCreate
           rows={3}
           maxLength={500}
         />
-        <AppSelect
-          label="Приоритет"
-          name="taskPriority"
-          value={priority}
-          onChange={(_, value) => setPriority(value as TaskPriority)}
-          fullWidth
-        >
-          {priorities.map((option) => (
-            <AppOption key={option.value} value={option.value}>
-              {option.label}
-            </AppOption>
-          ))}
-        </AppSelect>
+        <div className="kb-form__row">
+          <AppSelect
+            label="Приоритет"
+            name="taskPriority"
+            value={priority}
+            onChange={(_, value) => setPriority(value as TaskPriority)}
+            fullWidth
+          >
+            {priorities.map((option) => (
+              <AppOption key={option.value} value={option.value}>
+                {option.label}
+              </AppOption>
+            ))}
+          </AppSelect>
+          <AppSelect
+            label="Исполнитель"
+            name="taskAssignee"
+            value={assigneeId}
+            onChange={(_, value) => setAssigneeId(String(value))}
+            fullWidth
+          >
+            <AppOption value={NO_ASSIGNEE}>Не назначен</AppOption>
+            {(members ?? []).map((member) => (
+              <AppOption key={member.userId} value={member.userId}>
+                {member.displayName}
+                {member.role === 'creator' ? ' — владелец' : ''}
+              </AppOption>
+            ))}
+          </AppSelect>
+        </div>
+        <div className="kb-form__row">
+          <AppDatePickerField
+            label="Дедлайн"
+            name="taskDueDate"
+            value={dueDate}
+            onChange={setDueDate}
+            locale="ru-RU"
+            supportingText="Необязательно."
+          />
+          <AppTextField
+            label="Оценка"
+            name="taskEstimate"
+            type="number"
+            value={estimate}
+            onChange={(event) => {
+              setEstimate(event.target.value)
+              if (error) setError(null)
+            }}
+            error={Boolean(error)}
+            errorText={error ?? undefined}
+            inputProps={{ min: 0, max: 1000, step: 1 }}
+            supportingText="Условные единицы, 0–1000."
+          />
+        </div>
       </form>
     </AppDialog>
   )

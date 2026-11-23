@@ -22,6 +22,7 @@ const demoUser: CurrentUser = {
   id: 'user-1',
   displayName: 'Студент Kanbex',
   email: 'student@kanbex.local',
+  avatarUrl: null,
 }
 
 function deferred<T>() {
@@ -153,6 +154,7 @@ describe('AuthProvider', () => {
       id: 'user-2',
       displayName: 'New User',
       email: 'new@example.com',
+      avatarUrl: null,
     })
     await renderProvider()
 
@@ -167,6 +169,7 @@ describe('AuthProvider', () => {
       id: 'user-2',
       displayName: 'New User',
       email: 'new@example.com',
+      avatarUrl: null,
     })
   })
 

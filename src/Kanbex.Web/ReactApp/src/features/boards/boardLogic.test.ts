@@ -36,6 +36,8 @@ function board(): Board {
     title: 'Доска',
     description: 'Описание',
     version: 0,
+    role: 'creator',
+    isPublic: false,
     columns: [
       column('todo', 0, [task('a'), task('b', 1)]),
       column('progress', 1, [task('c')], 1),
@@ -315,5 +317,68 @@ describe('column management', () => {
     expect(updated.columns.map((item) => item.id)).toEqual(['todo', 'new'])
     expect(updated.columns[1].order).toBe(1)
     expect(updated.columns[1].tasks.map((item) => item.id)).toEqual(['x'])
+  })
+})
+
+describe('task metadata fields', () => {
+  it('creates a task with assignee, due date and estimate', () => {
+    const result = addTaskToColumn(board(), 'todo', {
+      title: 'С дедлайном',
+      assigneeId: 'user-1',
+      assigneeName: 'Анна',
+      dueDate: '2026-12-01',
+      estimate: 5,
+    })
+
+    expect(result.task).toMatchObject({
+      assigneeId: 'user-1',
+      assigneeName: 'Анна',
+      dueDate: '2026-12-01',
+      estimate: 5,
+      tags: [],
+      commentCount: 0,
+    })
+  })
+
+  it('defaults new metadata fields to null', () => {
+    const result = addTaskToColumn(board(), 'todo', { title: 'Просто задача' })
+
+    expect(result.task).toMatchObject({
+      assigneeId: null,
+      assigneeName: null,
+      dueDate: null,
+      estimate: null,
+    })
+  })
+
+  it('updates assignee, due date and estimate through the patch', () => {
+    const updated = updateTaskInBoard(board(), 'a', {
+      assigneeId: 'user-2',
+      dueDate: '2026-11-30',
+      estimate: 8,
+    })
+
+    const updatedTask = updated
+      ?.columns.find((item) => item.id === 'todo')
+      ?.tasks.find((item) => item.id === 'a')
+    expect(updatedTask).toMatchObject({
+      assigneeId: 'user-2',
+      dueDate: '2026-11-30',
+      estimate: 8,
+    })
+  })
+
+  it('keeps metadata when moving a task between columns', () => {
+    const prepared = updateTaskInBoard(board(), 'a', { assigneeId: 'user-1', dueDate: '2026-12-05', estimate: 3 })
+    if (!prepared) throw new Error('updateTaskInBoard returned null')
+
+    const moved = moveTaskToColumn(prepared, 'a', 'done')
+    const movedTask = moved.board.columns.find((item) => item.id === 'done')?.tasks.find((item) => item.id === 'a')
+
+    expect(movedTask).toMatchObject({
+      assigneeId: 'user-1',
+      dueDate: '2026-12-05',
+      estimate: 3,
+    })
   })
 })

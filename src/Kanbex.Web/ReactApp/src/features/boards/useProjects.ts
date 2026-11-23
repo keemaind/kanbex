@@ -20,15 +20,7 @@ export function useProjects(): UseProjectsResult {
     setLoading(true)
     try {
       const boards = await fetchBoards()
-      setProjects(boards.map((board) => ({
-        id: board.id,
-        title: board.title,
-        description: board.description,
-        taskCount: board.taskCount,
-        columnCount: board.columnCount,
-        updatedAt: board.updatedAt,
-        completedTaskCount: board.completedTaskCount,
-      })))
+      setProjects(boards)
       setError(null)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Не удалось загрузить проекты.')
@@ -53,6 +45,8 @@ export function useProjects(): UseProjectsResult {
       taskCount: board.columns.reduce((sum, column) => sum + column.tasks.length, 0),
       completedTaskCount: lastColumn?.tasks.length ?? 0,
       updatedAt: new Date().toISOString(),
+      role: board.role,
+      isPublic: board.isPublic,
     }
     setProjects((current) => [project, ...current])
     setError(null)

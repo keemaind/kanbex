@@ -6,6 +6,7 @@
 export {
   Carousel as AppCarousel,
   CarouselItem as AppCarouselItem,
+  DatePickerField as AppDatePickerField,
   IconButton as AppIconButton,
   LinearProgressIndicator as AppLinearProgress,
   Menu as AppMenu,
@@ -26,6 +27,7 @@ export {
 export type {
   CarouselItemProps as AppCarouselItemProps,
   CarouselProps as AppCarouselProps,
+  DatePickerFieldProps as AppDatePickerFieldProps,
   IconButtonProps as AppIconButtonProps,
   LinearProgressIndicatorProps as AppLinearProgressProps,
   MenuItemProps as AppMenuItemProps,

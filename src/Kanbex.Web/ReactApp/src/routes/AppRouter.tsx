@@ -1,4 +1,6 @@
+import { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
+import { LoadingState } from '@kanbex/ui'
 import {
   AboutPage,
   BoardsPage,
@@ -13,6 +15,12 @@ import {
 import { MainMenuLayout } from '../app/MainMenuLayout.js'
 import { RequireAuth } from '../app/RequireAuth.js'
 
+// Публичная доска грузится отдельным чанком: она не нужна после входа,
+// а анонимные посетители открывают её первой.
+const PublicBoardPage = lazy(() =>
+  import('../pages/PublicBoardPage.js').then((module) => ({ default: module.PublicBoardPage })),
+)
+
 /**
  * Дерево клиентских маршрутов: главная с боковым меню, проекты, доска
  * и служебные страницы.
@@ -23,6 +31,21 @@ export function AppRouter() {
       <Route path="/" element={<Navigate to="/home" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      {/* Публичная read-only доска: без RequireAuth и главного меню. */}
+      <Route
+        path="/share/:boardId"
+        element={
+          <Suspense
+            fallback={
+              <div className="kb-page">
+                <LoadingState label="Загружаем доску…" />
+              </div>
+            }
+          >
+            <PublicBoardPage />
+          </Suspense>
+        }
+      />
 
       <Route
         element={

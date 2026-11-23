@@ -6,7 +6,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Kanbex.Web.Services;
 
-public sealed class BoardService(KanbexDbContext dbContext)
+/// <summary>
+/// Результат операции с доской: разделяет «не найдено» (нет доски или нет
+/// доступа), «запрещено» (участник без прав Creator) и «конфликт» версии/WIP.
+/// </summary>
+public sealed record AccessResult<T>(T? Value, bool IsNotFound, bool IsForbidden, bool IsConflict = false)
+{
+    public static AccessResult<T> NotFound => new(default, true, false);
+    public static AccessResult<T> Forbidden => new(default, false, true);
+    public static AccessResult<T> Conflict => new(default, false, false, true);
+    public static AccessResult<T> Ok(T value) => new(value, false, false);
+}
+
+public sealed class BoardService(
+    KanbexDbContext dbContext,
+    ProjectAccessService accessService,
+    TaskHistoryService historyService)
 {
     private const int TemporaryColumnOrder = 1_000_000;
     private const int TemporaryNewColumnOrder = 2_000_000;
@@ -130,11 +145,11 @@ public sealed class BoardService(KanbexDbContext dbContext)
             ]),
     };
 
-    public async Task<IReadOnlyList<BoardSummaryResponse>> ListAsync(string ownerId, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<BoardSummaryResponse>> ListAsync(string userId, CancellationToken cancellationToken)
     {
         var projects = await dbContext.Projects
             .AsNoTracking()
-            .Where(project => project.OwnerId == ownerId)
+            .Where(project => project.OwnerId == userId || project.Members.Any(member => member.UserId == userId))
             .Include(project => project.Columns)
             .ThenInclude(column => column.Tasks)
             .OrderByDescending(project => project.UpdatedAt)
@@ -152,19 +167,27 @@ public sealed class BoardService(KanbexDbContext dbContext)
                 project.Columns.Sum(column => column.Tasks.Count),
                 project.Columns.Count,
                 project.UpdatedAt,
-                lastColumn?.Tasks.Count ?? 0);
+                lastColumn?.Tasks.Count ?? 0,
+                project.OwnerId == userId ? ProjectMemberRole.Creator : ProjectMemberRole.Member,
+                project.IsPublic);
         }).ToList();
     }
 
-    public async Task<BoardResponse?> GetAsync(Guid boardId, string ownerId, CancellationToken cancellationToken)
+    public async Task<AccessResult<BoardResponse>> GetAsync(
+        Guid boardId,
+        string userId,
+        CancellationToken cancellationToken)
     {
-        var project = await dbContext.Projects
-            .AsNoTracking()
-            .Include(candidate => candidate.Columns.OrderBy(column => column.SortOrder))
-            .ThenInclude(column => column.Tasks.OrderBy(task => task.Position))
-            .SingleOrDefaultAsync(candidate => candidate.Id == boardId && candidate.OwnerId == ownerId, cancellationToken);
+        var project = await LoadProjectAsync(boardId, cancellationToken);
+        if (project is null)
+        {
+            return AccessResult<BoardResponse>.NotFound;
+        }
 
-        return project is null ? null : ToResponse(project);
+        var role = ResolveRole(project, userId);
+        return role is null
+            ? AccessResult<BoardResponse>.NotFound
+            : AccessResult<BoardResponse>.Ok(ToResponse(project, role.Value));
     }
 
     public async Task<BoardResponse> CreateAsync(CreateBoardRequest request, string ownerId, CancellationToken cancellationToken)
@@ -189,7 +212,7 @@ public sealed class BoardService(KanbexDbContext dbContext)
 
         dbContext.Projects.Add(project);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return ToResponse(project);
+        return ToResponse(project, ProjectMemberRole.Creator);
     }
 
     /// <summary>
@@ -221,18 +244,23 @@ public sealed class BoardService(KanbexDbContext dbContext)
 
         dbContext.Projects.Add(project);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return ToResponse(project);
+        return ToResponse(project, ProjectMemberRole.Creator);
     }
 
-    public async Task<BoardResponse?> ResetAsync(Guid boardId, string ownerId, CancellationToken cancellationToken)
+    public async Task<AccessResult<BoardResponse>> ResetAsync(
+        Guid boardId,
+        string userId,
+        CancellationToken cancellationToken)
     {
-        var project = await dbContext.Projects
-            .AsNoTracking()
-            .SingleOrDefaultAsync(candidate => candidate.Id == boardId && candidate.OwnerId == ownerId, cancellationToken);
-
-        if (project is null)
+        var role = await accessService.GetRoleAsync(boardId, userId, cancellationToken);
+        if (role is null)
         {
-            return null;
+            return AccessResult<BoardResponse>.NotFound;
+        }
+
+        if (role != ProjectMemberRole.Creator)
+        {
+            return AccessResult<BoardResponse>.Forbidden;
         }
 
         var now = DateTime.UtcNow;
@@ -251,7 +279,7 @@ public sealed class BoardService(KanbexDbContext dbContext)
             .ExecuteDeleteAsync(cancellationToken);
 
         var updatedRows = await dbContext.Projects
-            .Where(candidate => candidate.Id == boardId && candidate.OwnerId == ownerId)
+            .Where(candidate => candidate.Id == boardId)
             .ExecuteUpdateAsync(updates => updates
                 .SetProperty(candidate => candidate.UpdatedAt, now)
                 .SetProperty(candidate => candidate.Version, candidate => candidate.Version + 1), cancellationToken);
@@ -259,41 +287,54 @@ public sealed class BoardService(KanbexDbContext dbContext)
         if (updatedRows == 0)
         {
             await transaction.RollbackAsync(cancellationToken);
-            return null;
+            return AccessResult<BoardResponse>.NotFound;
         }
 
-        dbContext.Columns.AddRange(CreateColumns(boardId, ownerId, now, InitialBoard));
+        dbContext.Columns.AddRange(CreateColumns(boardId, userId, now, InitialBoard));
         await dbContext.SaveChangesAsync(cancellationToken);
         dbContext.ChangeTracker.Clear();
 
         await transaction.CommitAsync(cancellationToken);
 
-        return await GetAsync(boardId, ownerId, cancellationToken);
+        return await GetAsync(boardId, userId, cancellationToken);
     }
 
-    public async Task<BoardUpdateResult> UpdateAsync(
+    public async Task<AccessResult<BoardResponse>> UpdateAsync(
         Guid boardId,
-        string ownerId,
+        string userId,
         UpdateBoardRequest request,
         CancellationToken cancellationToken)
     {
         var project = await dbContext.Projects
             .AsNoTracking()
-            .SingleOrDefaultAsync(candidate => candidate.Id == boardId && candidate.OwnerId == ownerId, cancellationToken);
+            .SingleOrDefaultAsync(candidate => candidate.Id == boardId, cancellationToken);
 
         if (project is null)
         {
-            return BoardUpdateResult.NotFound;
+            return AccessResult<BoardResponse>.NotFound;
+        }
+
+        var role = await accessService.GetRoleAsync(boardId, userId, cancellationToken);
+        if (role is null)
+        {
+            return AccessResult<BoardResponse>.NotFound;
         }
 
         if (project.Version != request.Version)
         {
-            return BoardUpdateResult.Conflict;
+            return AccessResult<BoardResponse>.Conflict;
+        }
+
+        if (role != ProjectMemberRole.Creator &&
+            (request.Title.Trim() != project.Name ||
+             NormalizeDescription(request.Description) != project.Description))
+        {
+            return AccessResult<BoardResponse>.Forbidden;
         }
 
         if (request.Columns.Any(column => column.WipLimit is int limit && column.Tasks.Count > limit))
         {
-            return BoardUpdateResult.Conflict;
+            return AccessResult<BoardResponse>.Conflict;
         }
 
         var validationError = ValidateUpdate(request);
@@ -302,9 +343,32 @@ public sealed class BoardService(KanbexDbContext dbContext)
             throw new BoardValidationException(validationError);
         }
 
+        var validAssigneeIds = await GetParticipantIdsAsync(boardId, cancellationToken);
+        if (request.Columns
+            .SelectMany(column => column.Tasks)
+            .Any(task => task.AssigneeId is not null && !validAssigneeIds.Contains(task.AssigneeId)))
+        {
+            throw new BoardValidationException("Исполнителем может быть только Creator или Member доски.");
+        }
+
         var requestedColumnIds = request.Columns.Select(column => column.Id).ToArray();
         var requestedTasks = request.Columns.SelectMany(column => column.Tasks).ToList();
         var requestedTaskIds = requestedTasks.Select(task => task.Id).ToArray();
+
+        var before = await dbContext.KanbanTasks
+            .AsNoTracking()
+            .Where(task => task.ProjectId == boardId)
+            .Select(task => new TaskState(
+                task.Id,
+                task.ColumnId,
+                task.Title,
+                task.Description,
+                task.Priority,
+                task.AssigneeId,
+                task.DueDate,
+                task.Estimate))
+            .ToListAsync(cancellationToken);
+        var beforeById = before.ToDictionary(task => task.Id);
 
         // Snapshot the current board without tracking: ColumnId participates in
         // alternate keys, so EF forbids changing it on a tracked KanbanTask.
@@ -332,18 +396,30 @@ public sealed class BoardService(KanbexDbContext dbContext)
         var now = DateTime.UtcNow;
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
-        var updatedRows = await dbContext.Projects
-            .Where(candidate => candidate.Id == boardId && candidate.OwnerId == ownerId && candidate.Version == request.Version)
-            .ExecuteUpdateAsync(updates => updates
-                .SetProperty(candidate => candidate.Name, request.Title.Trim())
-                .SetProperty(candidate => candidate.Description, NormalizeDescription(request.Description))
-                .SetProperty(candidate => candidate.UpdatedAt, now)
-                .SetProperty(candidate => candidate.Version, candidate => candidate.Version + 1), cancellationToken);
+        int updatedRows;
+        if (role == ProjectMemberRole.Creator)
+        {
+            updatedRows = await dbContext.Projects
+                .Where(candidate => candidate.Id == boardId && candidate.Version == request.Version)
+                .ExecuteUpdateAsync(updates => updates
+                    .SetProperty(candidate => candidate.Name, request.Title.Trim())
+                    .SetProperty(candidate => candidate.Description, NormalizeDescription(request.Description))
+                    .SetProperty(candidate => candidate.UpdatedAt, now)
+                    .SetProperty(candidate => candidate.Version, candidate => candidate.Version + 1), cancellationToken);
+        }
+        else
+        {
+            updatedRows = await dbContext.Projects
+                .Where(candidate => candidate.Id == boardId && candidate.Version == request.Version)
+                .ExecuteUpdateAsync(updates => updates
+                    .SetProperty(candidate => candidate.UpdatedAt, now)
+                    .SetProperty(candidate => candidate.Version, candidate => candidate.Version + 1), cancellationToken);
+        }
 
         if (updatedRows == 0)
         {
             await transaction.RollbackAsync(cancellationToken);
-            return BoardUpdateResult.Conflict;
+            return AccessResult<BoardResponse>.Conflict;
         }
 
         var conflictingColumnIds = await dbContext.Columns
@@ -405,6 +481,9 @@ public sealed class BoardService(KanbexDbContext dbContext)
                 var priority = task.Priority;
                 var position = task.Order;
                 var columnId = column.Id;
+                var assigneeId = task.AssigneeId;
+                var dueDate = task.DueDate;
+                var estimate = task.Estimate;
 
                 await dbContext.KanbanTasks
                     .Where(candidate => candidate.Id == taskId && candidate.ProjectId == boardId)
@@ -414,6 +493,9 @@ public sealed class BoardService(KanbexDbContext dbContext)
                         .SetProperty(candidate => candidate.Priority, priority)
                         .SetProperty(candidate => candidate.Position, position)
                         .SetProperty(candidate => candidate.ColumnId, columnId)
+                        .SetProperty(candidate => candidate.AssigneeId, assigneeId)
+                        .SetProperty(candidate => candidate.DueDate, dueDate)
+                        .SetProperty(candidate => candidate.Estimate, estimate)
                         .SetProperty(candidate => candidate.UpdatedAt, now), cancellationToken);
             }
         }
@@ -430,7 +512,10 @@ public sealed class BoardService(KanbexDbContext dbContext)
                     Position = task.Order,
                     ColumnId = column.Id,
                     ProjectId = boardId,
-                    ReporterId = ownerId,
+                    ReporterId = userId,
+                    AssigneeId = task.AssigneeId,
+                    DueDate = task.DueDate,
+                    Estimate = task.Estimate,
                     CreatedAt = now,
                     UpdatedAt = now,
                 }))
@@ -442,6 +527,21 @@ public sealed class BoardService(KanbexDbContext dbContext)
             await dbContext.SaveChangesAsync(cancellationToken);
             dbContext.ChangeTracker.Clear();
         }
+
+        var after = request.Columns
+            .SelectMany(column => column.Tasks.Select(task => new TaskState(
+                task.Id,
+                column.Id,
+                task.Title.Trim(),
+                NormalizeDescription(task.Description),
+                task.Priority,
+                task.AssigneeId,
+                task.DueDate,
+                task.Estimate)))
+            .ToList();
+        var historyEntries = historyService.BuildEntries(
+            boardId, userId, now, beforeById, after, requestedColumnIdSet);
+        await historyService.SaveAsync(historyEntries, cancellationToken);
 
         if (removedColumnIds.Length > 0)
         {
@@ -481,22 +581,127 @@ public sealed class BoardService(KanbexDbContext dbContext)
 
         await transaction.CommitAsync(cancellationToken);
 
-        var updatedBoard = await GetAsync(boardId, ownerId, cancellationToken);
-        return updatedBoard is null ? BoardUpdateResult.NotFound : BoardUpdateResult.Updated(updatedBoard);
+        return await GetAsync(boardId, userId, cancellationToken);
     }
 
-    public async Task<bool> DeleteAsync(Guid boardId, string ownerId, CancellationToken cancellationToken)
+    public async Task<AccessResult<bool>> DeleteAsync(
+        Guid boardId,
+        string userId,
+        CancellationToken cancellationToken)
     {
+        var role = await accessService.GetRoleAsync(boardId, userId, cancellationToken);
+        if (role is null)
+        {
+            return AccessResult<bool>.NotFound;
+        }
+
+        if (role != ProjectMemberRole.Creator)
+        {
+            return AccessResult<bool>.Forbidden;
+        }
+
         var project = await dbContext.Projects
-            .SingleOrDefaultAsync(candidate => candidate.Id == boardId && candidate.OwnerId == ownerId, cancellationToken);
+            .SingleOrDefaultAsync(candidate => candidate.Id == boardId, cancellationToken);
         if (project is null)
         {
-            return false;
+            return AccessResult<bool>.NotFound;
         }
 
         dbContext.Projects.Remove(project);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return true;
+        return AccessResult<bool>.Ok(true);
+    }
+
+    public async Task<AccessResult<bool>> SetVisibilityAsync(
+        Guid boardId,
+        string userId,
+        bool isPublic,
+        CancellationToken cancellationToken)
+    {
+        var role = await accessService.GetRoleAsync(boardId, userId, cancellationToken);
+        if (role is null)
+        {
+            return AccessResult<bool>.NotFound;
+        }
+
+        if (role != ProjectMemberRole.Creator)
+        {
+            return AccessResult<bool>.Forbidden;
+        }
+
+        var updated = await dbContext.Projects
+            .Where(project => project.Id == boardId)
+            .ExecuteUpdateAsync(updates => updates
+                .SetProperty(project => project.IsPublic, isPublic)
+                .SetProperty(project => project.UpdatedAt, DateTime.UtcNow), cancellationToken);
+
+        return updated == 0 ? AccessResult<bool>.NotFound : AccessResult<bool>.Ok(isPublic);
+    }
+
+    public async Task<PublicBoardResponse?> GetPublicAsync(Guid boardId, CancellationToken cancellationToken)
+    {
+        var project = await dbContext.Projects
+            .AsNoTracking()
+            .Where(candidate => candidate.Id == boardId && candidate.IsPublic)
+            .Include(candidate => candidate.Columns.OrderBy(column => column.SortOrder))
+            .ThenInclude(column => column.Tasks.OrderBy(task => task.Position))
+            .ThenInclude(task => task.Assignee)
+            .Include(candidate => candidate.Columns)
+            .ThenInclude(column => column.Tasks)
+            .ThenInclude(task => task.TaskTags)
+            .ThenInclude(taskTag => taskTag.Tag)
+            .AsSplitQuery()
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return project is null ? null : ToPublicResponse(project);
+    }
+
+    private async Task<Project?> LoadProjectAsync(Guid boardId, CancellationToken cancellationToken) =>
+        await dbContext.Projects
+            .AsNoTracking()
+            .Include(candidate => candidate.Members)
+            .Include(candidate => candidate.Columns.OrderBy(column => column.SortOrder))
+            .ThenInclude(column => column.Tasks.OrderBy(task => task.Position))
+            .ThenInclude(task => task.Assignee)
+            .Include(candidate => candidate.Columns)
+            .ThenInclude(column => column.Tasks)
+            .ThenInclude(task => task.TaskTags)
+            .ThenInclude(taskTag => taskTag.Tag)
+            .Include(candidate => candidate.Columns)
+            .ThenInclude(column => column.Tasks)
+            .ThenInclude(task => task.Comments)
+            .AsSplitQuery()
+            .SingleOrDefaultAsync(candidate => candidate.Id == boardId, cancellationToken);
+
+    private async Task<HashSet<string>> GetParticipantIdsAsync(Guid boardId, CancellationToken cancellationToken)
+    {
+        var ownerId = await dbContext.Projects
+            .AsNoTracking()
+            .Where(project => project.Id == boardId)
+            .Select(project => project.OwnerId)
+            .SingleAsync(cancellationToken);
+
+        var memberIds = await dbContext.ProjectMembers
+            .AsNoTracking()
+            .Where(member => member.ProjectId == boardId)
+            .Select(member => member.UserId)
+            .ToListAsync(cancellationToken);
+
+        var ids = memberIds.ToHashSet();
+        ids.Add(ownerId);
+        return ids;
+    }
+
+    private static ProjectMemberRole? ResolveRole(Project project, string userId)
+    {
+        if (project.OwnerId == userId)
+        {
+            return ProjectMemberRole.Creator;
+        }
+
+        return project.Members.Any(member => member.UserId == userId)
+            ? ProjectMemberRole.Member
+            : null;
     }
 
     private static string? ValidateUpdate(UpdateBoardRequest request)
@@ -595,11 +800,13 @@ public sealed class BoardService(KanbexDbContext dbContext)
     private static string? NormalizeDescription(string? description) =>
         string.IsNullOrWhiteSpace(description) ? null : description.Trim();
 
-    private static BoardResponse ToResponse(Project project) => new(
+    internal static BoardResponse ToResponse(Project project, ProjectMemberRole role) => new(
         project.Id,
         project.Name,
         project.Description ?? string.Empty,
         project.Version,
+        role,
+        project.IsPublic,
         project.Columns
             .OrderBy(column => column.SortOrder)
             .Select(column => new BoardColumnResponse(
@@ -614,16 +821,45 @@ public sealed class BoardService(KanbexDbContext dbContext)
                         task.Title,
                         task.Description ?? string.Empty,
                         task.Priority,
-                        task.Position))
+                        task.Position,
+                        task.AssigneeId,
+                        task.Assignee?.DisplayName,
+                        task.DueDate,
+                        task.Estimate,
+                        task.TaskTags
+                            .Select(taskTag => new TagResponse(taskTag.Tag.Id, taskTag.Tag.Name, taskTag.Tag.Color))
+                            .ToList(),
+                        task.Comments.Count))
+                    .ToList()))
+            .ToList());
+
+    private static PublicBoardResponse ToPublicResponse(Project project) => new(
+        project.Id,
+        project.Name,
+        project.Description ?? string.Empty,
+        project.Columns
+            .OrderBy(column => column.SortOrder)
+            .Select(column => new PublicBoardColumnResponse(
+                column.Id,
+                column.Name,
+                column.WipLimit,
+                column.SortOrder,
+                column.Tasks
+                    .OrderBy(task => task.Position)
+                    .Select(task => new PublicBoardTaskResponse(
+                        task.Id,
+                        task.Title,
+                        task.Description ?? string.Empty,
+                        task.Priority,
+                        task.Position,
+                        task.Assignee?.DisplayName,
+                        task.DueDate,
+                        task.Estimate,
+                        task.TaskTags
+                            .Select(taskTag => new TagResponse(taskTag.Tag.Id, taskTag.Tag.Name, taskTag.Tag.Color))
+                            .ToList()))
                     .ToList()))
             .ToList());
 }
 
 public sealed class BoardValidationException(string message) : Exception(message);
-
-public sealed record BoardUpdateResult(BoardResponse? Board, bool IsNotFound, bool IsConflict)
-{
-    public static BoardUpdateResult NotFound { get; } = new(null, true, false);
-    public static BoardUpdateResult Conflict { get; } = new(null, false, true);
-    public static BoardUpdateResult Updated(BoardResponse board) => new(board, false, false);
-}

@@ -14,9 +14,9 @@ public sealed class BoardsController(BoardService boardService) : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<BoardSummaryResponse>>> List(CancellationToken cancellationToken)
     {
-        var ownerId = GetOwnerId();
-        if (ownerId is null) return Unauthorized();
-        return Ok(await boardService.ListAsync(ownerId, cancellationToken));
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+        return Ok(await boardService.ListAsync(userId, cancellationToken));
     }
 
     [HttpPost]
@@ -24,30 +24,27 @@ public sealed class BoardsController(BoardService boardService) : ControllerBase
         [FromBody] CreateBoardRequest request,
         CancellationToken cancellationToken)
     {
-        var ownerId = GetOwnerId();
-        if (ownerId is null) return Unauthorized();
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
 
         try
         {
-            var board = await boardService.CreateAsync(request, ownerId, cancellationToken);
+            var board = await boardService.CreateAsync(request, userId, cancellationToken);
             return CreatedAtAction(nameof(Details), new { boardId = board.Id }, board);
         }
         catch (BoardValidationException exception)
         {
-            return Problem(
-                statusCode: StatusCodes.Status400BadRequest,
-                title: "Некорректная доска.",
-                detail: exception.Message);
+            return ValidationProblem(exception);
         }
     }
 
     [HttpPost("template/{templateKey}")]
     public async Task<ActionResult<BoardResponse>> CreateFromTemplate(string templateKey, CancellationToken cancellationToken)
     {
-        var ownerId = GetOwnerId();
-        if (ownerId is null) return Unauthorized();
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
 
-        var board = await boardService.CreateFromTemplateAsync(templateKey, ownerId, cancellationToken);
+        var board = await boardService.CreateFromTemplateAsync(templateKey, userId, cancellationToken);
         if (board is null)
         {
             return Problem(
@@ -62,10 +59,10 @@ public sealed class BoardsController(BoardService boardService) : ControllerBase
     [HttpGet("{boardId:guid}")]
     public async Task<ActionResult<BoardResponse>> Details(Guid boardId, CancellationToken cancellationToken)
     {
-        var ownerId = GetOwnerId();
-        if (ownerId is null) return Unauthorized();
-        var board = await boardService.GetAsync(boardId, ownerId, cancellationToken);
-        return board is null ? NotFoundProblem() : Ok(board);
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+        var result = await boardService.GetAsync(boardId, userId, cancellationToken);
+        return ToActionResult(result);
     }
 
     [HttpPut("{boardId:guid}")]
@@ -74,51 +71,82 @@ public sealed class BoardsController(BoardService boardService) : ControllerBase
         [FromBody] UpdateBoardRequest request,
         CancellationToken cancellationToken)
     {
-        var ownerId = GetOwnerId();
-        if (ownerId is null) return Unauthorized();
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
 
         try
         {
-            var result = await boardService.UpdateAsync(boardId, ownerId, request, cancellationToken);
-            if (result.IsNotFound) return NotFoundProblem();
-            if (result.IsConflict) return ConflictProblem("Доска была изменена или нарушен WIP-лимит. Обновите данные и повторите попытку.");
-            return Ok(result.Board);
+            var result = await boardService.UpdateAsync(boardId, userId, request, cancellationToken);
+            return ToActionResult(result, "Доска была изменена или нарушен WIP-лимит. Обновите данные и повторите попытку.");
         }
         catch (BoardValidationException exception)
         {
-            return Problem(
-                statusCode: StatusCodes.Status400BadRequest,
-                title: "Некорректная доска.",
-                detail: exception.Message);
+            return ValidationProblem(exception);
         }
     }
 
     [HttpPost("{boardId:guid}/reset")]
     public async Task<ActionResult<BoardResponse>> Reset(Guid boardId, CancellationToken cancellationToken)
     {
-        var ownerId = GetOwnerId();
-        if (ownerId is null) return Unauthorized();
-        var board = await boardService.ResetAsync(boardId, ownerId, cancellationToken);
-        return board is null ? NotFoundProblem() : Ok(board);
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+        var result = await boardService.ResetAsync(boardId, userId, cancellationToken);
+        return ToActionResult(result);
+    }
+
+    [HttpPut("{boardId:guid}/visibility")]
+    public async Task<IActionResult> SetVisibility(
+        Guid boardId,
+        [FromBody] UpdateVisibilityRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        var result = await boardService.SetVisibilityAsync(boardId, userId, request.IsPublic, cancellationToken);
+        if (result.IsNotFound) return NotFoundProblem();
+        if (result.IsForbidden) return ForbiddenProblem();
+        return NoContent();
     }
 
     [HttpDelete("{boardId:guid}")]
     public async Task<IActionResult> Delete(Guid boardId, CancellationToken cancellationToken)
     {
-        var ownerId = GetOwnerId();
-        if (ownerId is null) return Unauthorized();
-        return await boardService.DeleteAsync(boardId, ownerId, cancellationToken) ? NoContent() : NotFoundProblem();
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+        var result = await boardService.DeleteAsync(boardId, userId, cancellationToken);
+        if (result.IsNotFound) return NotFoundProblem();
+        if (result.IsForbidden) return ForbiddenProblem();
+        return NoContent();
     }
 
-    private string? GetOwnerId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
+    private ActionResult<T> ToActionResult<T>(AccessResult<T> result, string? conflictDetail = null)
+    {
+        if (result.IsNotFound) return NotFoundProblem();
+        if (result.IsForbidden) return ForbiddenProblem();
+        if (result.IsConflict) return ConflictProblem(conflictDetail ?? "Доска была изменена. Обновите данные и повторите попытку.");
+        return Ok(result.Value);
+    }
+
+    private string? GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
     private ObjectResult NotFoundProblem() => Problem(
         statusCode: StatusCodes.Status404NotFound,
         title: "Доска не найдена.",
         detail: "Доска не существует или недоступна текущему пользователю.");
 
+    private ObjectResult ForbiddenProblem() => Problem(
+        statusCode: StatusCodes.Status403Forbidden,
+        title: "Недостаточно прав.",
+        detail: "Действие доступно только владельцу доски.");
+
     private ObjectResult ConflictProblem(string detail) => Problem(
         statusCode: StatusCodes.Status409Conflict,
         title: "Конфликт доски.",
         detail: detail);
+
+    private ObjectResult ValidationProblem(BoardValidationException exception) => Problem(
+        statusCode: StatusCodes.Status400BadRequest,
+        title: "Некорректная доска.",
+        detail: exception.Message);
 }

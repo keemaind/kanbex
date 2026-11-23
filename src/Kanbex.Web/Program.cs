@@ -90,7 +90,13 @@ builder.Services.AddAntiforgery(options =>
     options.Cookie.Name = "Kanbex.Antiforgery";
 });
 
+builder.Services.AddScoped<ProjectAccessService>();
+builder.Services.AddScoped<TaskHistoryService>();
 builder.Services.AddScoped<BoardService>();
+builder.Services.AddScoped<BoardMembersService>();
+builder.Services.AddScoped<CommentService>();
+builder.Services.AddScoped<TagService>();
+builder.Services.AddSingleton<AvatarStorage>();
 builder.Services.AddScoped<ApiAntiforgeryFilter>();
 builder.Services.AddControllersWithViews(options => options.Filters.AddService<ApiAntiforgeryFilter>())
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(

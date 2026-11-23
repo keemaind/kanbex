@@ -15,6 +15,8 @@ import { BoardColumn } from './BoardColumn.js'
 export interface KanbanBoardProps {
   board: Board
   disabled?: boolean
+  /** Read-only режим публичной доски: без drag-and-drop, добавления и открытия. */
+  readOnly?: boolean
   onMoveTask: (taskId: string, targetColumnId: string) => void
   onOpenTask: (task: TaskCardModel) => void
   onCreateTask: (columnId: string) => void
@@ -25,7 +27,14 @@ export interface KanbanBoardProps {
  * с drag-and-drop между этапами. Перетаскивание — дополнение, а не замена
  * кнопкам на карточке.
  */
-export function KanbanBoard({ board, disabled = false, onMoveTask, onOpenTask, onCreateTask }: KanbanBoardProps) {
+export function KanbanBoard({
+  board,
+  disabled = false,
+  readOnly = false,
+  onMoveTask,
+  onOpenTask,
+  onCreateTask,
+}: KanbanBoardProps) {
   const [activeTask, setActiveTask] = useState<TaskCardModel | null>(null)
 
   const sensors = useSensors(
@@ -66,6 +75,7 @@ export function KanbanBoard({ board, disabled = false, onMoveTask, onOpenTask, o
               column={column}
               boardColumns={orderedColumns}
               disabled={disabled}
+              readOnly={readOnly}
               onOpenTask={onOpenTask}
               onCreateTask={onCreateTask}
             />

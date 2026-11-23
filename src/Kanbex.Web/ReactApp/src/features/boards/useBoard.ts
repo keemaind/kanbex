@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Board, BoardColumn, TaskCard } from '../../types/index.js'
-import { fetchBoard, resetBoard, saveBoard } from '../../services/boardsApi.js'
+import type { Board, BoardColumn, ProjectRole, Tag, TaskCard } from '../../types/index.js'
+import { fetchBoard, resetBoard, saveBoard, setBoardVisibility } from '../../services/boardsApi.js'
 import { ApiError } from '../../services/api.js'
 import {
   addTaskToColumn,
@@ -16,8 +16,16 @@ import {
 
 const AUTOSAVE_DELAY_MS = 900
 
+/** Локальная правка метаданных карточки, не входящих в PUT доски. */
+export interface TaskMetaPatch {
+  tags?: Tag[]
+  commentCount?: number
+}
+
 export interface UseBoardResult {
   board: Board | null
+  /** Роль текущего пользователя на доске; `null`, пока доска не загружена. */
+  role: ProjectRole | null
   loading: boolean
   error: string | null
   saveError: string | null
@@ -27,12 +35,19 @@ export interface UseBoardResult {
   lastMove: MoveTaskResult | null
   moveTask: (taskId: string, targetColumnId: string) => MoveTaskResult | null
   addTask: (columnId: string, input: NewTaskInput) => AddTaskResult | null
-  updateTask: (taskId: string, patch: Partial<Pick<TaskCard, 'title' | 'description' | 'priority'>>) => TaskCard | null
+  updateTask: (
+    taskId: string,
+    patch: Partial<Pick<TaskCard, 'title' | 'description' | 'priority' | 'assigneeId' | 'dueDate' | 'estimate'>>,
+  ) => TaskCard | null
   deleteTask: (taskId: string) => boolean
   /** Удаляет все карточки со всех колонок, возвращает число удалённых. */
   clearTasks: () => number
   updateBoard: (patch: Partial<Pick<Board, 'title' | 'description'>>) => void
   replaceColumns: (columns: BoardColumn[]) => void
+  /** Переключает публичный доступ (только Creator) и обновляет локальное состояние. */
+  setVisibility: (isPublic: boolean) => Promise<void>
+  /** Обновляет теги/счётчик комментариев карточки локально, без autosave. */
+  updateTaskMeta: (taskId: string, meta: TaskMetaPatch) => void
   reset: () => Promise<void>
   save: () => Promise<void>
   reload: () => Promise<void>
@@ -263,8 +278,40 @@ export function useBoard(boardId: string): UseBoardResult {
     markDirty()
   }, [board, markDirty])
 
+  const setVisibility = useCallback(async (isPublic: boolean) => {
+    await setBoardVisibility(boardId, isPublic)
+    setBoard((current) => (current ? { ...current, isPublic } : current))
+  }, [boardId])
+
+  const updateTaskMeta = useCallback<UseBoardResult['updateTaskMeta']>((taskId, meta) => {
+    // Теги и счётчик комментариев приходят из отдельных endpoint-ов и не
+    // участвуют в PUT доски, поэтому dirty не выставляется.
+    setBoard((current) => {
+      if (!current) return null
+      if (!current.columns.some((column) => column.tasks.some((task) => task.id === taskId))) {
+        return current
+      }
+
+      const columns = current.columns.map((column) => {
+        if (!column.tasks.some((task) => task.id === taskId)) return column
+        return {
+          ...column,
+          tasks: column.tasks.map((task) => {
+            if (task.id !== taskId) return task
+            const next: TaskCard = { ...task }
+            if (meta.tags !== undefined) next.tags = meta.tags
+            if (meta.commentCount !== undefined) next.commentCount = meta.commentCount
+            return next
+          }),
+        }
+      })
+      return { ...current, columns }
+    })
+  }, [])
+
   return {
     board,
+    role: board?.role ?? null,
     loading,
     error,
     saveError,
@@ -279,6 +326,8 @@ export function useBoard(boardId: string): UseBoardResult {
     clearTasks,
     updateBoard,
     replaceColumns,
+    setVisibility,
+    updateTaskMeta,
     reset,
     save,
     reload,

@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { AppButton, AppDialog, AppTextField } from '@kanbex/ui'
 import type { BoardColumn } from '../../types/index.js'
 import { createId } from './boardLogic.js'
+import { pluralize } from './pluralize.js'
 
 export interface ColumnManagerDialogProps {
   columns: BoardColumn[]
@@ -35,8 +36,9 @@ function parseWipLimit(value: string): number | null | 'invalid' {
 }
 
 /**
- * Управление колонками: название, WIP-лимит, порядок, добавление и удаление.
- * Колонку с карточками удалить нельзя, чтобы не потерять данные.
+ * Управление колонками: каждый этап — отдельная карточка с номером, названием,
+ * WIP-лимитом и действиями. Порядок строк = порядок этапов на доске слева
+ * направо. Колонку с карточками удалить нельзя, чтобы не потерять данные.
  */
 export function ColumnManagerDialog({ columns, onApply, onCancel }: ColumnManagerDialogProps) {
   const [rows, setRows] = useState<ColumnRow[]>(() => toRows(columns))
@@ -130,16 +132,20 @@ export function ColumnManagerDialog({ columns, onApply, onCancel }: ColumnManage
   return (
     <AppDialog
       open
+      className="kb-dialog--wide"
       title="Колонки доски"
-      description="Переименуйте колонки, задайте WIP-лимиты и измените порядок этапов."
+      description="Этапы идут сверху вниз — на доске расположатся слева направо. WIP-лимит ограничивает число карточек в работе: пустое поле — без ограничения."
       confirmLabel="Сохранить колонки"
       onConfirm={handleApply}
       onCancel={onCancel}
     >
-      <div className="kb-column-editor-dialog">
-        <div className="kb-column-editor">
-          {rows.map((row, index) => (
-            <div className="kb-column-editor__row" key={row.id}>
+      <div className="kb-column-editor">
+        {rows.map((row, index) => (
+          <div className="kb-column-editor__row" key={row.id} data-stage={index % 3}>
+            <span className="kb-column-editor__order" aria-hidden="true">
+              {index + 1}
+            </span>
+            <div className="kb-column-editor__fields">
               <AppTextField
                 label="Название"
                 name={`columnTitle-${row.id}`}
@@ -150,13 +156,20 @@ export function ColumnManagerDialog({ columns, onApply, onCancel }: ColumnManage
               />
               <AppTextField
                 className="kb-column-editor__wip"
-                label="WIP"
+                label="WIP-лимит"
                 name={`columnWip-${row.id}`}
                 value={row.wipLimit}
                 onChange={(event) => updateRow(row.id, { wipLimit: event.target.value })}
-                supportingText="Без лимита"
+                supportingText="Пусто — без ограничения"
                 inputProps={{ inputMode: 'numeric' }}
               />
+            </div>
+            <div className="kb-column-editor__side">
+              <span className="kb-column-editor__cards">
+                {row.tasksCount > 0
+                  ? `${row.tasksCount} ${pluralize(row.tasksCount, ['карточка', 'карточки', 'карточек'])}`
+                  : 'Пусто'}
+              </span>
               <div className="kb-column-editor__actions">
                 <AppButton
                   variant="text"
@@ -165,7 +178,7 @@ export function ColumnManagerDialog({ columns, onApply, onCancel }: ColumnManage
                   disabled={index === 0}
                   aria-label={`Переместить колонку «${row.title}» раньше`}
                 >
-                  ↑
+                    ↑
                 </AppButton>
                 <AppButton
                   variant="text"
@@ -174,7 +187,7 @@ export function ColumnManagerDialog({ columns, onApply, onCancel }: ColumnManage
                   disabled={index === rows.length - 1}
                   aria-label={`Переместить колонку «${row.title}» позже`}
                 >
-                  ↓
+                    ↓
                 </AppButton>
                 <AppButton
                   variant="text"
@@ -183,37 +196,36 @@ export function ColumnManagerDialog({ columns, onApply, onCancel }: ColumnManage
                   disabled={rows.length === 1 || row.tasksCount > 0}
                   title={row.tasksCount > 0 ? 'Сначала перенесите или удалите карточки' : 'Удалить колонку'}
                 >
-                  Удалить
+                    Удалить
                 </AppButton>
               </div>
-              {row.tasksCount > 0 ? (
-                <span className="kb-column-editor__note">
-                  В колонке {row.tasksCount} карточек — удаление недоступно.
-                </span>
-              ) : null}
             </div>
-          ))}
-        </div>
-
-        <form className="kb-form" onSubmit={handleAdd}>
-          <AppTextField
-            label="Новая колонка"
-            name="newColumnTitle"
-            value={newTitle}
-            onChange={(event) => {
-              setNewTitle(event.target.value)
-              if (error) setError(null)
-            }}
-            maxLength={100}
-            supportingText="Например: «Ревью» или «Заблокировано»."
-          />
-          <AppButton type="button" variant="tonal" onClick={() => handleAdd()}>
-            Добавить колонку
-          </AppButton>
-        </form>
-
-        {error ? <p className="kb-form__error">{error}</p> : null}
+          </div>
+        ))}
       </div>
+
+      <form className="kb-form kb-column-editor__add" onSubmit={handleAdd}>
+        <AppTextField
+          className="kb-column-editor__add-field"
+          label="Новая колонка"
+          name="newColumnTitle"
+          value={newTitle}
+          onChange={(event) => {
+            setNewTitle(event.target.value)
+            if (error) setError(null)
+          }}
+          maxLength={100}
+          supportingText="Например: «Ревью» или «Заблокировано»."
+        />
+        <AppButton type="button" variant="tonal" onClick={() => handleAdd()}>
+          Добавить колонку
+        </AppButton>
+      </form>
+
+      {error ? <p className="kb-form__error">{error}</p> : null}
+      <p className="kb-column-editor__hint">
+        Колонку с карточками нельзя удалить — сначала перенесите их в другой этап.
+      </p>
     </AppDialog>
   )
 }

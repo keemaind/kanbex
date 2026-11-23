@@ -1,17 +1,36 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { AppButton, AppDialog, AppOption, AppSelect, AppTextField } from '@kanbex/ui'
-import type { TaskCard, TaskPriority } from '../../types/index.js'
+import { AppButton, AppDatePickerField, AppDialog, AppOption, AppSelect, AppTextField } from '@kanbex/ui'
+import type { BoardColumn as BoardColumnModel, BoardMember, Tag, TaskCard, TaskPriority } from '../../types/index.js'
+import { TaskComments } from './TaskComments.js'
+import { TagPicker } from './TagPicker.js'
+import { TaskHistory } from './TaskHistory.js'
+import { fromApiDate, toApiDate } from './taskDates.js'
 
 export interface TaskEditValues {
   title: string
   description: string
   priority: TaskPriority
+  assigneeId: string | null
+  dueDate: string | null
+  estimate: number | null
 }
 
 export interface TaskEditDialogProps {
   task: TaskCard
   columnTitle: string
+  boardId: string
+  columns: BoardColumnModel[]
+  /** Участники доски — варианты исполнителя. */
+  members?: BoardMember[]
+  /** Текущий пользователь — автор удаляет свой комментарий. */
+  currentUserId?: string | null
+  /** Creator может удалить любой комментарий. */
+  isCreator?: boolean
+  /** Обновляет счётчик комментариев на карточке. */
+  onCommentCountChange?: (count: number) => void
+  /** Обновляет теги карточки после прикрепления/открепления. */
+  onTagsChange?: (tags: Tag[]) => void
   onSave: (values: TaskEditValues) => void
   onDelete: () => void
   onCancel: () => void
@@ -24,11 +43,29 @@ const priorities: Array<{ value: TaskPriority; label: string }> = [
   { value: 'critical', label: 'Критический' },
 ]
 
-/** Редактирование карточки: название, описание и приоритет. */
-export function TaskEditDialog({ task, columnTitle, onSave, onDelete, onCancel }: TaskEditDialogProps) {
+const NO_ASSIGNEE = ''
+
+/** Редактирование карточки: поля, исполнитель, дедлайн, оценка, комментарии и история. */
+export function TaskEditDialog({
+  task,
+  columnTitle,
+  boardId,
+  columns,
+  members,
+  currentUserId = null,
+  isCreator = false,
+  onCommentCountChange,
+  onTagsChange,
+  onSave,
+  onDelete,
+  onCancel,
+}: TaskEditDialogProps) {
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description)
   const [priority, setPriority] = useState<TaskPriority>(task.priority)
+  const [assigneeId, setAssigneeId] = useState(task.assigneeId ?? NO_ASSIGNEE)
+  const [dueDate, setDueDate] = useState<Date | null>(() => fromApiDate(task.dueDate))
+  const [estimate, setEstimate] = useState(task.estimate === null || task.estimate === undefined ? '' : String(task.estimate))
   const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = (event?: FormEvent<HTMLFormElement>) => {
@@ -40,13 +77,28 @@ export function TaskEditDialog({ task, columnTitle, onSave, onDelete, onCancel }
       return
     }
 
+    const trimmedEstimate = estimate.trim()
+    const estimateValue = trimmedEstimate === '' ? null : Number(trimmedEstimate)
+    if (estimateValue !== null && (!Number.isInteger(estimateValue) || estimateValue < 0 || estimateValue > 1000)) {
+      setError('Оценка — целое число от 0 до 1000.')
+      return
+    }
+
     setError(null)
-    onSave({ title: trimmedTitle, description: description.trim(), priority })
+    onSave({
+      title: trimmedTitle,
+      description: description.trim(),
+      priority,
+      assigneeId: assigneeId || null,
+      dueDate: toApiDate(dueDate),
+      estimate: estimateValue,
+    })
   }
 
   return (
     <AppDialog
       open
+      className="kb-dialog--wide"
       title="Карточка"
       description={`Колонка «${columnTitle}».`}
       confirmLabel="Сохранить"
@@ -78,25 +130,89 @@ export function TaskEditDialog({ task, columnTitle, onSave, onDelete, onCancel }
           rows={4}
           maxLength={2000}
         />
-        <AppSelect
-          label="Приоритет"
-          name="taskPriority"
-          value={priority}
-          onChange={(_, value) => setPriority(value as TaskPriority)}
-          fullWidth
-        >
-          {priorities.map((option) => (
-            <AppOption key={option.value} value={option.value}>
-              {option.label}
-            </AppOption>
-          ))}
-        </AppSelect>
+        <div className="kb-form__row">
+          <AppSelect
+            label="Приоритет"
+            name="taskPriority"
+            value={priority}
+            onChange={(_, value) => setPriority(value as TaskPriority)}
+            fullWidth
+          >
+            {priorities.map((option) => (
+              <AppOption key={option.value} value={option.value}>
+                {option.label}
+              </AppOption>
+            ))}
+          </AppSelect>
+          <AppSelect
+            label="Исполнитель"
+            name="taskAssignee"
+            value={assigneeId}
+            onChange={(_, value) => setAssigneeId(String(value))}
+            fullWidth
+          >
+            <AppOption value={NO_ASSIGNEE}>Не назначен</AppOption>
+            {(members ?? []).map((member) => (
+              <AppOption key={member.userId} value={member.userId}>
+                {member.displayName}
+                {member.role === 'creator' ? ' — владелец' : ''}
+              </AppOption>
+            ))}
+          </AppSelect>
+        </div>
+        <div className="kb-form__row">
+          <AppDatePickerField
+            label="Дедлайн"
+            name="taskDueDate"
+            value={dueDate}
+            onChange={setDueDate}
+            locale="ru-RU"
+            supportingText="Необязательно."
+          />
+          <AppTextField
+            label="Оценка"
+            name="taskEstimate"
+            type="number"
+            value={estimate}
+            onChange={(event) => {
+              setEstimate(event.target.value)
+              if (error) setError(null)
+            }}
+            error={Boolean(error)}
+            errorText={error ?? undefined}
+            inputProps={{ min: 0, max: 1000, step: 1 }}
+            supportingText="Условные единицы, 0–1000."
+          />
+        </div>
       </form>
       <div className="kb-dialog__danger">
         <AppButton variant="text" onClick={onDelete}>
           Удалить карточку
         </AppButton>
       </div>
+      <section className="kb-task-extras" aria-label="Теги карточки">
+        <h3 className="kb-task-extras__title">Теги</h3>
+        <TagPicker
+          boardId={boardId}
+          task={task}
+          isCreator={isCreator}
+          onTagsChange={(tags) => onTagsChange?.(tags)}
+        />
+      </section>
+      <section className="kb-task-extras" aria-label="Комментарии">
+        <h3 className="kb-task-extras__title">Комментарии</h3>
+        <TaskComments
+          boardId={boardId}
+          taskId={task.id}
+          currentUserId={currentUserId}
+          isCreator={isCreator}
+          onCountChange={(count) => onCommentCountChange?.(count)}
+        />
+      </section>
+      <section className="kb-task-extras" aria-label="История карточки">
+        <h3 className="kb-task-extras__title">История</h3>
+        <TaskHistory boardId={boardId} taskId={task.id} columns={columns} members={members} />
+      </section>
     </AppDialog>
   )
 }

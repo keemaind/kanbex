@@ -13,6 +13,8 @@ export interface AppDialogProps {
   cancelLabel?: string | null
   /** Тон подтверждающего действия. */
   confirmVariant?: 'filled' | 'tonal' | 'text'
+  /** Дополнительный класс корня диалога (например, модификатор ширины). */
+  className?: string
   onConfirm?: () => void
   onCancel: () => void
   busy?: boolean
@@ -30,6 +32,7 @@ export function AppDialog({
   confirmLabel = 'Подтвердить',
   cancelLabel = 'Отмена',
   confirmVariant = 'filled',
+  className,
   onConfirm,
   onCancel,
   busy = false,
@@ -45,7 +48,7 @@ export function AppDialog({
       }}
     >
       <div
-        className="kb-dialog"
+        className={className ? `kb-dialog ${className}` : 'kb-dialog'}
         role="dialog"
         aria-modal="true"
         aria-labelledby="kb-dialog-title"

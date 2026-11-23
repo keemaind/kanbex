@@ -2,28 +2,19 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { AppButton, AppTextField, StatusBadge } from '@kanbex/ui'
 import { useAuth } from '../features/auth/index.js'
-import { changePassword, updateDisplayName } from '../services/authApi.js'
+import { changePassword, deleteAvatar, updateDisplayName, uploadAvatar } from '../services/authApi.js'
 import { describeApiError } from '../services/api.js'
-import { clearStoredAvatar, fileToAvatarDataUrl, storeAvatar, useStoredAvatar } from '../app/avatar.js'
+import { fileToAvatarFile, getInitials, validateAvatarFile } from '../app/avatar.js'
 
-function getInitials(name: string): string {
-  return (
-    name
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase() ?? '')
-      .join('') || 'K'
-  )
-}
-
-/** Страница профиля: аватар, имя, смена пароля и выход из аккаунта.
- *  Аватар хранится локально; имя и пароль идут через API аутентификации. */
+/** Страница профиля: аватар на сервере, имя, смена пароля и выход из аккаунта. */
 export function ProfilePage() {
   const { user, updateUser, logout, pending } = useAuth()
   const navigate = useNavigate()
-  const avatar = useStoredAvatar()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const avatarUrl = user?.avatarUrl ?? null
+
+  const [avatarSaving, setAvatarSaving] = useState(false)
+  const [avatarNotice, setAvatarNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null)
 
   const [name, setName] = useState(user?.displayName ?? '')
   const [nameSaving, setNameSaving] = useState(false)
@@ -85,14 +76,38 @@ export function ProfilePage() {
   const handleAvatarChange = (file: File | undefined) => {
     if (!file) return
 
-    fileToAvatarDataUrl(file)
-      .then((dataUrl) => storeAvatar(dataUrl))
-      .catch((cause: unknown) => {
-        setPasswordNotice({
-          tone: 'danger',
-          text: cause instanceof Error ? cause.message : 'Не удалось загрузить фото.',
-        })
+    const validationError = validateAvatarFile(file)
+    if (validationError) {
+      setAvatarNotice({ tone: 'danger', text: validationError })
+      return
+    }
+
+    setAvatarSaving(true)
+    setAvatarNotice(null)
+    fileToAvatarFile(file)
+      .then((prepared) => uploadAvatar(prepared))
+      .then((updated) => {
+        updateUser(updated)
+        setAvatarNotice({ tone: 'success', text: 'Аватар обновлён.' })
       })
+      .catch((cause: unknown) => {
+        setAvatarNotice({ tone: 'danger', text: describeApiError(cause) })
+      })
+      .finally(() => setAvatarSaving(false))
+  }
+
+  const handleAvatarDelete = () => {
+    setAvatarSaving(true)
+    setAvatarNotice(null)
+    deleteAvatar()
+      .then((updated) => {
+        updateUser(updated)
+        setAvatarNotice({ tone: 'success', text: 'Аватар удалён.' })
+      })
+      .catch((cause: unknown) => {
+        setAvatarNotice({ tone: 'danger', text: describeApiError(cause) })
+      })
+      .finally(() => setAvatarSaving(false))
   }
 
   return (
@@ -109,8 +124,8 @@ export function ProfilePage() {
           Аватар
         </h2>
         <div className="kb-profile-avatar-row">
-          {avatar ? (
-            <img className="kb-profile-avatar" src={avatar} alt="Аватар пользователя" />
+          {avatarUrl ? (
+            <img className="kb-profile-avatar" src={avatarUrl} alt="Аватар пользователя" />
           ) : (
             <span className="kb-profile-avatar kb-profile-avatar--fallback" aria-hidden="true">
               {getInitials(user.displayName)}
@@ -120,12 +135,13 @@ export function ProfilePage() {
             <AppButton
               variant="filled"
               size="sm"
+              disabled={avatarSaving}
               onClick={() => fileInputRef.current?.click()}
             >
-              Загрузить фото
+              {avatarSaving ? 'Сохраняем…' : 'Загрузить фото'}
             </AppButton>
-            {avatar ? (
-              <AppButton variant="text" size="sm" onClick={() => clearStoredAvatar()}>
+            {avatarUrl ? (
+              <AppButton variant="text" size="sm" disabled={avatarSaving} onClick={handleAvatarDelete}>
                 Удалить
               </AppButton>
             ) : null}
@@ -134,13 +150,18 @@ export function ProfilePage() {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/webp"
           className="kb-profile-file-input"
           onChange={(event) => {
             handleAvatarChange(event.target.files?.[0])
             event.target.value = ''
           }}
         />
+        {avatarNotice ? (
+          <StatusBadge tone={avatarNotice.tone} withDot>
+            {avatarNotice.text}
+          </StatusBadge>
+        ) : null}
       </section>
 
       <section className="kb-account-card" aria-labelledby="kb-profile-name-title">

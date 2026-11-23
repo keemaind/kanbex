@@ -51,7 +51,7 @@ public sealed class BoardApiTests : IClassFixture<KanbexApiFactory>
 
         var listResponse = await client.GetAsync("/api/boards");
         Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
-        var listJson = await listResponse.Content.ReadFromJsonAsync<List<BoardSummaryResponse>>();
+        var listJson = await listResponse.Content.ReadFromJsonAsync<List<BoardSummaryResponse>>(JsonOptions);
         Assert.Contains(listJson!, board =>
             board.Id == created.Id &&
             board.ColumnCount == 3 &&

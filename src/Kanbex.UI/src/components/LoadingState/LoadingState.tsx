@@ -1,4 +1,4 @@
-import { LoadingIndicator } from 'm3-expressive-react'
+import { CircularProgressIndicator } from 'm3-expressive-react'
 
 export interface LoadingStateProps {
   /** Текст ожидания, озвучиваемый скринридером. */
@@ -11,7 +11,7 @@ export interface LoadingStateProps {
 export function LoadingState({ label = 'Загрузка…', compact = false }: LoadingStateProps) {
   return (
     <div className={compact ? 'kb-loading kb-loading--compact' : 'kb-loading'} role="status" aria-live="polite">
-      <LoadingIndicator size={compact ? 28 : 40} aria-hidden="true" />
+      <CircularProgressIndicator shape="wavy" size={compact ? 24 : 48} aria-hidden="true" />
       <span className="kb-loading__label">{label}</span>
     </div>
   )

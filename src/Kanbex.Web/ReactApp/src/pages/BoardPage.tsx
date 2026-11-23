@@ -11,9 +11,10 @@ import {
   StatusBadge,
 } from '@kanbex/ui'
 import {
-  BoardDetailsDialog,
+  BoardSettingsDialog,
   ColumnManagerDialog,
   KanbanBoard,
+  TagManagerDialog,
   TaskCreateDialog,
   TaskEditDialog,
   getBoardProgress,
@@ -21,7 +22,11 @@ import {
   useBoard,
 } from '../features/boards/index.js'
 import type { NewTaskInput, TaskEditValues } from '../features/boards/index.js'
+import { useAuth } from '../features/auth/AuthProvider.js'
 import { ArrowBackIcon, FolderIcon, MoreIcon, PlusIcon } from '../app/icons.js'
+import { fetchBoardMembers } from '../services/boardsApi.js'
+import type { BoardMember } from '../types/index.js'
+import type { Tag } from '../types/index.js'
 import type { TaskCard as TaskCardModel } from '../types/index.js'
 
 const boardIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -35,8 +40,10 @@ type SaveTone = 'info' | 'danger' | 'warning' | 'success'
 export function BoardPage() {
   const { boardId = '' } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const {
     board,
+    role,
     loading,
     error,
     saveError,
@@ -51,6 +58,8 @@ export function BoardPage() {
     clearTasks,
     updateBoard,
     replaceColumns,
+    setVisibility,
+    updateTaskMeta,
     reset,
     save,
     reload,
@@ -59,11 +68,30 @@ export function BoardPage() {
   const [editTaskId, setEditTaskId] = useState<string | null>(null)
   const [taskToDelete, setTaskToDelete] = useState<TaskCardModel | null>(null)
   const [createColumnId, setCreateColumnId] = useState<string | null>(null)
-  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [columnsOpen, setColumnsOpen] = useState(false)
+  const [tagsOpen, setTagsOpen] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
   const [clearOpen, setClearOpen] = useState(false)
   const [notice, setNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null)
+  const [members, setMembers] = useState<BoardMember[]>([])
+
+  useEffect(() => {
+    if (!boardIdPattern.test(boardId)) return
+
+    let active = true
+    fetchBoardMembers(boardId)
+      .then((list) => {
+        if (active) setMembers(list)
+      })
+      .catch(() => {
+        // Без участников достаточно пустого списка исполнителя.
+        if (active) setMembers([])
+      })
+    return () => {
+      active = false
+    }
+  }, [boardId])
 
   useEffect(() => {
     if (!dirty) return
@@ -111,6 +139,7 @@ export function BoardPage() {
 
   if (!board) return null
 
+  const isCreator = role === 'creator'
   const progress = getBoardProgress(board)
   const quickAddColumn = [...board.columns].sort((a, b) => a.order - b.order)[0] ?? null
   const wipRejection = lastMove?.rejection === 'wip-limit'
@@ -169,6 +198,34 @@ export function BoardPage() {
     setNotice({ tone: 'success', text: 'Карточка обновлена.' })
   }
 
+  /** Переименование или смена цвета тега: обновляем его на всех карточках. */
+  const handleTagUpdated = (tag: Tag) => {
+    if (!board) return
+
+    board.columns
+      .flatMap((column) => column.tasks)
+      .forEach((task) => {
+        if (task.tags?.some((item) => item.id === tag.id)) {
+          updateTaskMeta(task.id, {
+            tags: task.tags.map((item) => (item.id === tag.id ? tag : item)),
+          })
+        }
+      })
+  }
+
+  /** Удаление тега: снимаем его со всех карточек локально. */
+  const handleTagDeleted = (tagId: string) => {
+    if (!board) return
+
+    board.columns
+      .flatMap((column) => column.tasks)
+      .forEach((task) => {
+        if (task.tags?.some((item) => item.id === tagId)) {
+          updateTaskMeta(task.id, { tags: task.tags.filter((item) => item.id !== tagId) })
+        }
+      })
+  }
+
   return (
     <div className="kb-workspace">
       <header className="kb-project-header">
@@ -214,7 +271,6 @@ export function BoardPage() {
               <AppIconButton variant="standard" size="sm" icon={<MoreIcon />} aria-label="Меню доски" />
             }
           >
-            <AppMenuItem onClick={() => setDetailsOpen(true)}>Настройки проекта</AppMenuItem>
             <AppMenuItem
               disabled={saving || !dirty}
               onClick={() => void save().catch(() => undefined)}
@@ -224,9 +280,11 @@ export function BoardPage() {
             <AppMenuItem disabled={saving || progress.total === 0} onClick={() => setClearOpen(true)}>
               Очистить задачи
             </AppMenuItem>
-            <AppMenuItem disabled={saving} onClick={() => setResetOpen(true)}>
-              Сбросить доску
-            </AppMenuItem>
+            {isCreator ? (
+              <AppMenuItem disabled={saving} onClick={() => setResetOpen(true)}>
+                Сбросить доску
+              </AppMenuItem>
+            ) : null}
           </AppMenu>
         </div>
       </header>
@@ -243,9 +301,19 @@ export function BoardPage() {
         >
           Добавить задачу
         </AppButton>
+        {isCreator ? (
+          <AppButton variant="outlined" size="sm" onClick={() => setSettingsOpen(true)}>
+            Настройки проекта
+          </AppButton>
+        ) : null}
         <AppButton variant="outlined" size="sm" onClick={() => setColumnsOpen(true)}>
           Настройки колонок
         </AppButton>
+        {isCreator ? (
+          <AppButton variant="outlined" size="sm" onClick={() => setTagsOpen(true)}>
+            Теги
+          </AppButton>
+        ) : null}
       </div>
 
       <KanbanBoard
@@ -283,6 +351,13 @@ export function BoardPage() {
         <TaskEditDialog
           task={editingTask}
           columnTitle={editingTaskColumn.title}
+          boardId={boardId}
+          columns={board.columns}
+          members={members}
+          currentUserId={user?.id ?? null}
+          isCreator={isCreator}
+          onCommentCountChange={(count) => updateTaskMeta(editingTask.id, { commentCount: count })}
+          onTagsChange={(tags) => updateTaskMeta(editingTask.id, { tags })}
           onSave={handleEditTask}
           onDelete={() => {
             setTaskToDelete(editingTask)
@@ -307,16 +382,31 @@ export function BoardPage() {
         onCancel={() => setTaskToDelete(null)}
       />
 
-      {detailsOpen ? (
-        <BoardDetailsDialog
-          title={board.title}
-          description={board.description}
+      {settingsOpen ? (
+        <BoardSettingsDialog
+          board={board}
           onSave={(values) => {
             updateBoard(values)
-            setDetailsOpen(false)
+            setSettingsOpen(false)
             setNotice({ tone: 'success', text: 'Настройки доски обновлены.' })
           }}
-          onCancel={() => setDetailsOpen(false)}
+          onVisibilityChange={async (isPublic) => {
+            await setVisibility(isPublic)
+            setNotice({
+              tone: 'success',
+              text: isPublic ? 'Доска опубликована.' : 'Публичный доступ отключён.',
+            })
+          }}
+          onClose={() => setSettingsOpen(false)}
+        />
+      ) : null}
+
+      {tagsOpen ? (
+        <TagManagerDialog
+          boardId={board.id}
+          onTagUpdated={handleTagUpdated}
+          onTagDeleted={handleTagDeleted}
+          onClose={() => setTagsOpen(false)}
         />
       ) : null}
 
@@ -399,6 +489,7 @@ export function BoardPage() {
       {createColumn ? (
         <TaskCreateDialog
           columnTitle={createColumn.title}
+          members={members}
           onCreate={handleCreateTask}
           onCancel={() => setCreateColumnId(null)}
         />

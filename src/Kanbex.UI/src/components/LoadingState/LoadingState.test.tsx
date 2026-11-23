@@ -8,7 +8,7 @@ describe('LoadingState', () => {
 
     expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite')
     expect(screen.getByText('Загрузка…')).toBeInTheDocument()
-    expect(screen.getByTestId('loading-indicator')).toBeInTheDocument()
+    expect(screen.getByTestId('circular-indicator')).toBeInTheDocument()
   })
 
   it('supports a custom label and compact mode', () => {

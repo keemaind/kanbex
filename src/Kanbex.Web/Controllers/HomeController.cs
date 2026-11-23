@@ -23,6 +23,11 @@ public class HomeController : Controller
     [HttpGet("/board/{**rest}")]
     public IActionResult BoardSpa() => View("Index");
 
+    // Публичная read-only ссылка на доску. Доступ к данным защищает
+    // /api/public/boards/{id}; хост нужен, чтобы прямой переход не давал 404.
+    [HttpGet("/share/{boardId:guid}")]
+    public IActionResult ShareSpa(Guid boardId) => View("Index");
+
     // Маршруты Identity UI из architecture.md. Полноценная Identity появится
     // позже; пока они перенаправляют на клиентские страницы входа/регистрации,
     // чтобы прямые ссылки не давали 404.

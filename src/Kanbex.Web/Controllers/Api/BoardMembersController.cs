@@ -1,0 +1,90 @@
+using System.Security.Claims;
+using Kanbex.Web.Contracts;
+using Kanbex.Web.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace Kanbex.Web.Controllers.Api;
+
+[ApiController]
+[Authorize]
+[Route("api/boards/{boardId:guid}/members")]
+public sealed class BoardMembersController(BoardMembersService membersService) : ControllerBase
+{
+    [HttpGet]
+    public async Task<ActionResult<IReadOnlyList<BoardMemberResponse>>> List(
+        Guid boardId,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+        var result = await membersService.ListAsync(boardId, userId, cancellationToken);
+        return ToActionResult(result);
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<BoardMemberResponse>> Add(
+        Guid boardId,
+        [FromBody] AddBoardMemberRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        try
+        {
+            var result = await membersService.AddAsync(boardId, userId, request, cancellationToken);
+            return ToActionResult(result);
+        }
+        catch (BoardValidationException exception)
+        {
+            return ValidationProblem(exception);
+        }
+    }
+
+    [HttpDelete("{memberUserId}")]
+    public async Task<IActionResult> Remove(
+        Guid boardId,
+        string memberUserId,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId is null) return Unauthorized();
+
+        try
+        {
+            var result = await membersService.RemoveAsync(boardId, userId, memberUserId, cancellationToken);
+            if (result.IsNotFound) return NotFoundProblem();
+            if (result.IsForbidden) return ForbiddenProblem();
+            return NoContent();
+        }
+        catch (BoardValidationException exception)
+        {
+            return ValidationProblem(exception);
+        }
+    }
+
+    private ActionResult<T> ToActionResult<T>(AccessResult<T> result)
+    {
+        if (result.IsNotFound) return NotFoundProblem();
+        if (result.IsForbidden) return ForbiddenProblem();
+        return Ok(result.Value);
+    }
+
+    private string? GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+    private ObjectResult NotFoundProblem() => Problem(
+        statusCode: StatusCodes.Status404NotFound,
+        title: "Доска не найдена.",
+        detail: "Доска не существует или недоступна текущему пользователю.");
+
+    private ObjectResult ForbiddenProblem() => Problem(
+        statusCode: StatusCodes.Status403Forbidden,
+        title: "Недостаточно прав.",
+        detail: "Управлять участниками может только владелец доски.");
+
+    private ObjectResult ValidationProblem(BoardValidationException exception) => Problem(
+        statusCode: StatusCodes.Status400BadRequest,
+        title: "Некорректный участник.",
+        detail: exception.Message);
+}

@@ -1,5 +1,6 @@
 using Kanbex.Infrastructure.Identity;
 using Kanbex.Web.Contracts;
+using Kanbex.Web.Services;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -20,15 +21,18 @@ public sealed class AuthController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IAntiforgery _antiforgery;
+    private readonly AvatarStorage _avatarStorage;
 
     public AuthController(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
-        IAntiforgery antiforgery)
+        IAntiforgery antiforgery,
+        AvatarStorage avatarStorage)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _antiforgery = antiforgery;
+        _avatarStorage = avatarStorage;
     }
 
     /// <summary>
@@ -206,8 +210,68 @@ public sealed class AuthController : ControllerBase
         return Ok(ToResponse(user));
     }
 
+    [Authorize]
+    [HttpPost("avatar")]
+    public async Task<IActionResult> UploadAvatar([FromForm] IFormFile? file, CancellationToken cancellationToken)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null)
+        {
+            return UnauthorizedProblem("Сессия не найдена. Войдите снова.");
+        }
+
+        if (file is null)
+        {
+            ModelState.AddModelError("file", "Выберите файл аватара.");
+            return ValidationProblem(ModelState);
+        }
+
+        string url;
+        try
+        {
+            url = await _avatarStorage.SaveAsync(file, cancellationToken);
+        }
+        catch (AvatarValidationException exception)
+        {
+            ModelState.AddModelError("file", exception.Message);
+            return ValidationProblem(ModelState);
+        }
+
+        _avatarStorage.Delete(user.AvatarUrl);
+        user.AvatarUrl = url;
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            _avatarStorage.Delete(url);
+            return ValidationProblemResult(result);
+        }
+
+        return Ok(ToResponse(user));
+    }
+
+    [Authorize]
+    [HttpDelete("avatar")]
+    public async Task<IActionResult> DeleteAvatar()
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null)
+        {
+            return UnauthorizedProblem("Сессия не найдена. Войдите снова.");
+        }
+
+        _avatarStorage.Delete(user.AvatarUrl);
+        user.AvatarUrl = null;
+        var result = await _userManager.UpdateAsync(user);
+        if (!result.Succeeded)
+        {
+            return ValidationProblemResult(result);
+        }
+
+        return Ok(ToResponse(user));
+    }
+
     private static CurrentUserResponse ToResponse(ApplicationUser user) =>
-        new(user.Id, user.DisplayName, user.Email ?? string.Empty);
+        new(user.Id, user.DisplayName, user.Email ?? string.Empty, user.AvatarUrl);
 
     private IActionResult ConflictProblem(string detail) =>
         Problem(
