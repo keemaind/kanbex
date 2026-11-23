@@ -1,0 +1,35 @@
+# .NET build output
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Frontend dependencies and generated files
+**/node_modules/
+**/ReactApp/dist/
+**/coverage/
+**/*.tsbuildinfo
+**/wwwroot/ReactApp/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+
+# Local databases and logs
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.log
+
+# IDE/editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
