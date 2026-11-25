@@ -33,7 +33,6 @@ export function TaskCreateDialog({ columnTitle, members, onCreate, onCancel }: T
   const [priority, setPriority] = useState<TaskPriority>('medium')
   const [assigneeId, setAssigneeId] = useState(NO_ASSIGNEE)
   const [dueDate, setDueDate] = useState<Date | null>(null)
-  const [estimate, setEstimate] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = (event?: FormEvent<HTMLFormElement>) => {
@@ -42,13 +41,6 @@ export function TaskCreateDialog({ columnTitle, members, onCreate, onCancel }: T
     const trimmedTitle = title.trim()
     if (trimmedTitle.length < 2) {
       setError('Название должно содержать минимум 2 символа.')
-      return
-    }
-
-    const trimmedEstimate = estimate.trim()
-    const estimateValue = trimmedEstimate === '' ? null : Number(trimmedEstimate)
-    if (estimateValue !== null && (!Number.isInteger(estimateValue) || estimateValue < 0 || estimateValue > 1000)) {
-      setError('Оценка — целое число от 0 до 1000.')
       return
     }
 
@@ -62,7 +54,6 @@ export function TaskCreateDialog({ columnTitle, members, onCreate, onCancel }: T
       assigneeId: assignee?.userId ?? null,
       assigneeName: assignee?.displayName ?? null,
       dueDate: toApiDate(dueDate),
-      estimate: estimateValue,
     })
   }
 
@@ -140,20 +131,6 @@ export function TaskCreateDialog({ columnTitle, members, onCreate, onCancel }: T
             onChange={setDueDate}
             locale="ru-RU"
             supportingText="Необязательно."
-          />
-          <AppTextField
-            label="Оценка"
-            name="taskEstimate"
-            type="number"
-            value={estimate}
-            onChange={(event) => {
-              setEstimate(event.target.value)
-              if (error) setError(null)
-            }}
-            error={Boolean(error)}
-            errorText={error ?? undefined}
-            inputProps={{ min: 0, max: 1000, step: 1 }}
-            supportingText="Условные единицы, 0–1000."
           />
         </div>
       </form>

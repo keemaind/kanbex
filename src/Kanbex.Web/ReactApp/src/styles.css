@@ -490,11 +490,20 @@ code {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 14px 16px;
-  border-radius: 18px;
+  padding: 16px;
+  border-radius: 16px;
   background: var(--kb-color-panel);
   box-shadow: var(--md-sys-elevation-shadow-level1);
   transition: box-shadow 120ms ease, opacity 120ms ease;
+}
+
+/* Клик по карточке открывает подробности; наведение слегка приподнимает её. */
+.kb-task--clickable {
+  cursor: pointer;
+}
+
+.kb-task--clickable:hover {
+  box-shadow: var(--md-sys-elevation-shadow-level2);
 }
 
 .kb-task--dragging {
@@ -511,7 +520,6 @@ code {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  justify-content: space-between;
 }
 
 .kb-task__check {
@@ -533,17 +541,17 @@ code {
 
 .kb-task__title {
   min-width: 0;
-  flex: 1;
   padding: 0;
   border: none;
   background: transparent;
   color: var(--md-sys-color-on-surface);
   cursor: pointer;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1.4;
   text-align: left;
+  overflow-wrap: break-word;
 }
 
 .kb-task__title:hover {
@@ -556,7 +564,7 @@ code {
 }
 
 .kb-task__title-static {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
 }
 
@@ -566,6 +574,7 @@ code {
   height: 24px;
   flex: none;
   place-items: center;
+  margin-left: auto;
   padding: 0;
   border: none;
   border-radius: 9999px;
@@ -593,16 +602,22 @@ code {
 }
 
 .kb-task__description {
+  display: -webkit-box;
   margin: 0;
+  overflow: hidden;
   color: var(--md-sys-color-on-surface-variant);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.5;
+  overflow-wrap: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .kb-task__foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px 14px;
 }
 
 .kb-task-meta {
@@ -640,12 +655,6 @@ code {
   line-height: 1.4;
 }
 
-.kb-task__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 14px;
-}
-
 .kb-task__meta-item {
   display: inline-flex;
   align-items: center;
@@ -664,11 +673,50 @@ code {
   font-weight: 600;
 }
 
+.kb-task__date {
+  margin-left: auto;
+}
+
+/* Исполнитель: кружок с аватаром (или инициалами) и имя. Своя задача —
+   акцентная обводка аватара и имя «Вы». */
+.kb-task__assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--md-sys-color-on-surface-variant);
+  font-size: 12.5px;
+}
+
+.kb-task__assignee-avatar {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.kb-task__assignee--mine {
+  color: var(--md-sys-color-primary);
+  font-weight: 600;
+}
+
+.kb-task__assignee--mine .kb-task__assignee-avatar {
+  box-shadow: 0 0 0 2px var(--md-sys-color-primary);
+}
+
 .kb-task__comments {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  margin-left: auto;
   color: var(--md-sys-color-on-surface-variant);
   font-size: 12.5px;
 }
@@ -1361,14 +1409,6 @@ code {
 }
 
 /* ---------- Редактирование доски ---------- */
-
-.kb-dialog__danger {
-  display: flex;
-  justify-content: flex-start;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--md-sys-color-outline-variant);
-}
 
 .kb-column-editor {
   display: flex;

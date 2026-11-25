@@ -76,7 +76,8 @@ public sealed record BoardMemberResponse(
     string UserId,
     string DisplayName,
     ProjectMemberRole Role,
-    DateTime JoinedAt);
+    DateTime JoinedAt,
+    string? AvatarUrl = null);
 
 public sealed record AddBoardMemberRequest(
     [Required(ErrorMessage = "Укажите e-mail.")]

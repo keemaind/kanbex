@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import {
   AppButton,
@@ -76,7 +76,11 @@ export function BoardPage() {
   const [notice, setNotice] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null)
   const [members, setMembers] = useState<BoardMember[]>([])
 
-  useEffect(() => {
+  /** (Пере)загружает участников доски. Вызывается при монтировании и при
+   *  закрытии настроек: там участники добавляются в собственном состоянии
+   *  секции, и без перезагрузки селекторы исполнителя показывали старый
+   *  список без нового участника. */
+  const refreshMembers = useCallback(() => {
     if (!boardIdPattern.test(boardId)) return
 
     let active = true
@@ -92,6 +96,8 @@ export function BoardPage() {
       active = false
     }
   }, [boardId])
+
+  useEffect(() => refreshMembers(), [refreshMembers])
 
   useEffect(() => {
     if (!dirty) return
@@ -318,6 +324,8 @@ export function BoardPage() {
 
       <KanbanBoard
         board={board}
+        members={members}
+        currentUserId={user?.id ?? null}
         onMoveTask={(taskId, targetColumnId) => {
           setNotice(null)
           moveTask(taskId, targetColumnId)
@@ -397,7 +405,10 @@ export function BoardPage() {
               text: isPublic ? 'Доска опубликована.' : 'Публичный доступ отключён.',
             })
           }}
-          onClose={() => setSettingsOpen(false)}
+          onClose={() => {
+            setSettingsOpen(false)
+            refreshMembers()
+          }}
         />
       ) : null}
 

@@ -9,7 +9,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
-import type { Board, TaskCard as TaskCardModel } from '../../types/index.js'
+import type { Board, BoardMember, TaskCard as TaskCardModel } from '../../types/index.js'
 import { BoardColumn } from './BoardColumn.js'
 
 export interface KanbanBoardProps {
@@ -17,6 +17,10 @@ export interface KanbanBoardProps {
   disabled?: boolean
   /** Read-only режим публичной доски: без drag-and-drop, добавления и открытия. */
   readOnly?: boolean
+  /** Участники доски — источник аватара исполнителя на карточке. */
+  members?: BoardMember[]
+  /** Идентификатор текущего пользователя — его задачи помечаются «Вы». */
+  currentUserId?: string | null
   onMoveTask: (taskId: string, targetColumnId: string) => void
   onOpenTask: (task: TaskCardModel) => void
   onCreateTask: (columnId: string) => void
@@ -31,6 +35,8 @@ export function KanbanBoard({
   board,
   disabled = false,
   readOnly = false,
+  members,
+  currentUserId = null,
   onMoveTask,
   onOpenTask,
   onCreateTask,
@@ -76,6 +82,8 @@ export function KanbanBoard({
               boardColumns={orderedColumns}
               disabled={disabled}
               readOnly={readOnly}
+              members={members}
+              currentUserId={currentUserId}
               onOpenTask={onOpenTask}
               onCreateTask={onCreateTask}
             />

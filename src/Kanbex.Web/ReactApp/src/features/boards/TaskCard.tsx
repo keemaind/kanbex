@@ -2,8 +2,14 @@ import { useDraggable } from '@dnd-kit/core'
 import { StatusBadge } from '@kanbex/ui'
 import type { BadgeTone } from '@kanbex/ui'
 import type { CSSProperties } from 'react'
-import type { BoardColumn as BoardColumnModel, TaskCard as TaskCardModel, TaskPriority } from '../../types/index.js'
-import { CheckIcon, ClockIcon, DragIndicatorIcon, NoteIcon, PersonIcon } from '../../app/icons.js'
+import type {
+  BoardColumn as BoardColumnModel,
+  BoardMember,
+  TaskCard as TaskCardModel,
+  TaskPriority,
+} from '../../types/index.js'
+import { getInitials } from '../../app/avatar.js'
+import { CalendarIcon, CheckIcon, DragIndicatorIcon, NoteIcon } from '../../app/icons.js'
 
 export interface TaskCardProps {
   task: TaskCardModel
@@ -14,16 +20,20 @@ export interface TaskCardProps {
   disabled?: boolean
   /** Read-only режим публичной доски: без ручки и открытия карточки. */
   readOnly?: boolean
+  /** Участники доски — источник аватара исполнителя. */
+  members?: BoardMember[]
+  /** Идентификатор текущего пользователя — его задачи помечаются «Вы». */
+  currentUserId?: string | null
   onOpen: (task: TaskCardModel) => void
   /** Включён ли режим перетаскивания (drag-and-drop — единственный способ перемещения). */
   draggable?: boolean
 }
 
 const priorityLabels: Record<TaskPriority, string> = {
-  low: 'Низкий приоритет',
-  medium: 'Средний приоритет',
-  high: 'Высокий приоритет',
-  critical: 'Критический приоритет',
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  critical: 'Critical',
 }
 
 const priorityTones: Record<TaskPriority, BadgeTone> = {
@@ -51,9 +61,10 @@ function formatDue(dueDate: string): string {
 }
 
 /**
- * Карточка задачи: заголовок, описание, исполнитель, дедлайн, оценка, теги.
- * Перемещение между колонками — только через drag-and-drop за ручку (у ручки
- * есть клавиатурная альтернатива: сенсор dnd-kit поддерживает перетаскивание
+ * Карточка задачи: приоритет, заголовок, описание (до трёх строк), теги,
+ * дедлайн и исполнитель с аватаром. Клик по карточке открывает подробности;
+ * перемещение между колонками — через drag-and-drop за ручку (у ручки есть
+ * клавиатурная альтернатива: сенсор dnd-kit поддерживает перетаскивание
  * с клавиатуры).
  */
 export function TaskCard({
@@ -62,6 +73,8 @@ export function TaskCard({
   completed = false,
   disabled = false,
   readOnly = false,
+  members,
+  currentUserId = null,
   onOpen,
   draggable = true,
 }: TaskCardProps) {
@@ -73,15 +86,25 @@ export function TaskCard({
 
   const overdue = task.dueDate ? isOverdue(task.dueDate, completed) : false
   const commentCount = task.commentCount ?? 0
+  const isMine = currentUserId !== null && task.assigneeId === currentUserId
+  const assigneeName = task.assigneeName ?? null
+  const assigneeMember = task.assigneeId
+    ? members?.find((member) => member.userId === task.assigneeId)
+    : undefined
+  const assigneeAvatarUrl = assigneeMember?.avatarUrl ?? null
+  // Имя берём из участников: assigneeName в карточке мог остаться от прежнего
+  // исполнителя, сервер обновит его только при следующем сохранении доски.
+  const assigneeDisplayName = isMine ? 'Вы' : assigneeMember?.displayName ?? assigneeName
 
   return (
     <article
       ref={setNodeRef}
-      className={
-        completed ? 'kb-task kb-task--done' : isDragging ? 'kb-task kb-task--dragging' : 'kb-task'
-      }
+      className={`kb-task${completed ? ' kb-task--done' : ''}${isDragging ? ' kb-task--dragging' : ''}${
+        readOnly ? '' : ' kb-task--clickable'
+      }`}
       data-task-id={task.id}
-      aria-label={`Задача: ${task.title}${completed ? ' (завершена)' : ''}`}
+      aria-label={`Задача: ${task.title}${completed ? ' (завершена)' : ''}${isMine ? ' — назначена вам' : ''}`}
+      onClick={readOnly ? undefined : () => onOpen(task)}
     >
       <div className="kb-task__head">
         {completed ? (
@@ -89,13 +112,9 @@ export function TaskCard({
             <CheckIcon />
           </span>
         ) : null}
-        {readOnly ? (
-          <span className="kb-task__title-static">{task.title}</span>
-        ) : (
-          <button type="button" className="kb-task__title" onClick={() => onOpen(task)}>
-            {task.title}
-          </button>
-        )}
+        <StatusBadge tone={priorityTones[task.priority]} withDot>
+          {priorityLabels[task.priority]}
+        </StatusBadge>
         {!readOnly ? (
           <button
             ref={setActivatorNodeRef}
@@ -103,6 +122,7 @@ export function TaskCard({
             className="kb-task__drag"
             aria-label={`Перетащить задачу «${task.title}» в другую колонку`}
             disabled={disabled || !draggable}
+            onClick={(event) => event.stopPropagation()}
             {...attributes}
             {...listeners}
           >
@@ -110,6 +130,21 @@ export function TaskCard({
           </button>
         ) : null}
       </div>
+
+      {readOnly ? (
+        <span className="kb-task__title-static">{task.title}</span>
+      ) : (
+        <button
+          type="button"
+          className="kb-task__title"
+          onClick={(event) => {
+            event.stopPropagation()
+            onOpen(task)
+          }}
+        >
+          {task.title}
+        </button>
+      )}
 
       {task.description ? <p className="kb-task__description">{task.description}</p> : null}
 
@@ -127,35 +162,35 @@ export function TaskCard({
         </div>
       ) : null}
 
-      {task.assigneeName || task.dueDate || (task.estimate !== null && task.estimate !== undefined) ? (
-        <div className="kb-task__meta">
-          {task.assigneeName ? (
-            <span className="kb-task__meta-item" title="Исполнитель">
-              <PersonIcon />
-              {task.assigneeName}
-            </span>
-          ) : null}
-          {task.dueDate ? (
-            <span
-              className={overdue ? 'kb-task__meta-item kb-task__meta-item--overdue' : 'kb-task__meta-item'}
-              title={overdue ? 'Просрочено' : 'Дедлайн'}
-            >
-              <ClockIcon />
-              {formatDue(task.dueDate)}
-            </span>
-          ) : null}
-          {task.estimate !== null && task.estimate !== undefined ? (
-            <span className="kb-task__meta-item" title="Оценка">
-              {task.estimate} ед.
-            </span>
-          ) : null}
-        </div>
-      ) : null}
-
       <div className="kb-task__foot">
-        <StatusBadge tone={priorityTones[task.priority]} withDot>
-          {priorityLabels[task.priority]}
-        </StatusBadge>
+        {assigneeName ? (
+          <span
+            className={isMine ? 'kb-task__assignee kb-task__assignee--mine' : 'kb-task__assignee'}
+            title={isMine ? 'Задача назначена вам' : 'Исполнитель'}
+          >
+            {assigneeAvatarUrl ? (
+              <img className="kb-task__assignee-avatar" src={assigneeAvatarUrl} alt="" />
+            ) : (
+              <span className="kb-task__assignee-avatar" aria-hidden="true">
+                {getInitials(assigneeName)}
+              </span>
+            )}
+            {assigneeDisplayName}
+          </span>
+        ) : null}
+        {task.dueDate ? (
+          <span
+            className={
+              overdue
+                ? 'kb-task__meta-item kb-task__date kb-task__meta-item--overdue'
+                : 'kb-task__meta-item kb-task__date'
+            }
+            title={overdue ? 'Просрочено' : 'Дедлайн'}
+          >
+            <CalendarIcon />
+            {formatDue(task.dueDate)}
+          </span>
+        ) : null}
         {commentCount > 0 ? (
           <span className="kb-task__comments" title="Комментарии">
             <NoteIcon />

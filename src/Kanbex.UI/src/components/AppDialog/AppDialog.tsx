@@ -13,6 +13,8 @@ export interface AppDialogProps {
   cancelLabel?: string | null
   /** Тон подтверждающего действия. */
   confirmVariant?: 'filled' | 'tonal' | 'text'
+  /** Содержимое в левой части панели действий (например, деструктивное действие). */
+  footerLeading?: ReactNode
   /** Дополнительный класс корня диалога (например, модификатор ширины). */
   className?: string
   onConfirm?: () => void
@@ -32,6 +34,7 @@ export function AppDialog({
   confirmLabel = 'Подтвердить',
   cancelLabel = 'Отмена',
   confirmVariant = 'filled',
+  footerLeading,
   className,
   onConfirm,
   onCancel,
@@ -62,6 +65,7 @@ export function AppDialog({
         {description ? <div className="kb-dialog__description">{description}</div> : null}
         {children ? <div className="kb-dialog__body">{children}</div> : null}
         <div className="kb-dialog__actions">
+          {footerLeading ? <div className="kb-dialog__actions-leading">{footerLeading}</div> : null}
           {cancelLabel ? (
             <AppButton variant="text" onClick={onCancel} disabled={busy}>
               {cancelLabel}

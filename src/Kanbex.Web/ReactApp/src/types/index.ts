@@ -82,6 +82,8 @@ export interface BoardMember {
   role: ProjectRole
   /** Дата добавления в формате ISO. */
   joinedAt: string
+  /** Относительный URL аватара; `null` — аватар не загружен. */
+  avatarUrl: string | null
 }
 
 /** Комментарий к карточке. */

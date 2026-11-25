@@ -37,7 +37,7 @@ public sealed class BoardMembersService(
 
         var members = new List<BoardMemberResponse>
         {
-            new(project.Owner.Id, project.Owner.DisplayName, ProjectMemberRole.Creator, project.CreatedAt),
+            new(project.Owner.Id, project.Owner.DisplayName, ProjectMemberRole.Creator, project.CreatedAt, project.Owner.AvatarUrl),
         };
 
         members.AddRange(project.Members
@@ -46,7 +46,8 @@ public sealed class BoardMembersService(
                 member.UserId,
                 member.User.DisplayName,
                 member.Role,
-                member.JoinedAt)));
+                member.JoinedAt,
+                member.User.AvatarUrl)));
 
         return AccessResult<IReadOnlyList<BoardMemberResponse>>.Ok(members);
     }
@@ -109,7 +110,8 @@ public sealed class BoardMembersService(
             target.Id,
             target.DisplayName,
             member.Role,
-            member.JoinedAt));
+            member.JoinedAt,
+            target.AvatarUrl));
     }
 
     public async Task<AccessResult<bool>> RemoveAsync(

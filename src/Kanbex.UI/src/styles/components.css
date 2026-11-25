@@ -255,3 +255,10 @@
   gap: 8px;
   margin-top: 24px;
 }
+
+/* Левый слот панели действий: прижимает отмену/подтверждение вправо. */
+.kb-dialog__actions-leading {
+  display: flex;
+  align-items: center;
+  margin-right: auto;
+}

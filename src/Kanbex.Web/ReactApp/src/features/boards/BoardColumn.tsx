@@ -1,6 +1,6 @@
 import { useDroppable } from '@dnd-kit/core'
 import { AppButton } from '@kanbex/ui'
-import type { BoardColumn as BoardColumnModel, TaskCard as TaskCardModel } from '../../types/index.js'
+import type { BoardColumn as BoardColumnModel, BoardMember, TaskCard as TaskCardModel } from '../../types/index.js'
 import { canAcceptTask, getWipState, isTaskCompleted } from './boardLogic.js'
 import { TaskCard } from './TaskCard.js'
 import { NoteIcon } from '../../app/icons.js'
@@ -12,6 +12,10 @@ export interface BoardColumnProps {
   disabled?: boolean
   /** Read-only режим публичной доски: без кнопок добавления и перетаскивания. */
   readOnly?: boolean
+  /** Участники доски — источник аватара исполнителя на карточке. */
+  members?: BoardMember[]
+  /** Идентификатор текущего пользователя — его задачи помечаются «Вы». */
+  currentUserId?: string | null
   onOpenTask: (task: TaskCardModel) => void
   onCreateTask: (columnId: string) => void
 }
@@ -26,6 +30,8 @@ export function BoardColumn({
   boardColumns,
   disabled = false,
   readOnly = false,
+  members,
+  currentUserId = null,
   onOpenTask,
   onCreateTask,
 }: BoardColumnProps) {
@@ -95,6 +101,8 @@ export function BoardColumn({
               completed={isTaskCompleted(task, column, boardColumns)}
               disabled={disabled}
               readOnly={readOnly}
+              members={members}
+              currentUserId={currentUserId}
               draggable={!disabled}
               onOpen={onOpenTask}
             />

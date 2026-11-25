@@ -45,7 +45,7 @@ const priorities: Array<{ value: TaskPriority; label: string }> = [
 
 const NO_ASSIGNEE = ''
 
-/** Редактирование карточки: поля, исполнитель, дедлайн, оценка, комментарии и история. */
+/** Редактирование карточки: поля, исполнитель, дедлайн, комментарии и история. */
 export function TaskEditDialog({
   task,
   columnTitle,
@@ -65,7 +65,6 @@ export function TaskEditDialog({
   const [priority, setPriority] = useState<TaskPriority>(task.priority)
   const [assigneeId, setAssigneeId] = useState(task.assigneeId ?? NO_ASSIGNEE)
   const [dueDate, setDueDate] = useState<Date | null>(() => fromApiDate(task.dueDate))
-  const [estimate, setEstimate] = useState(task.estimate === null || task.estimate === undefined ? '' : String(task.estimate))
   const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = (event?: FormEvent<HTMLFormElement>) => {
@@ -77,13 +76,6 @@ export function TaskEditDialog({
       return
     }
 
-    const trimmedEstimate = estimate.trim()
-    const estimateValue = trimmedEstimate === '' ? null : Number(trimmedEstimate)
-    if (estimateValue !== null && (!Number.isInteger(estimateValue) || estimateValue < 0 || estimateValue > 1000)) {
-      setError('Оценка — целое число от 0 до 1000.')
-      return
-    }
-
     setError(null)
     onSave({
       title: trimmedTitle,
@@ -91,7 +83,7 @@ export function TaskEditDialog({
       priority,
       assigneeId: assigneeId || null,
       dueDate: toApiDate(dueDate),
-      estimate: estimateValue,
+      estimate: task.estimate ?? null,
     })
   }
 
@@ -104,6 +96,11 @@ export function TaskEditDialog({
       confirmLabel="Сохранить"
       onConfirm={() => handleSubmit()}
       onCancel={onCancel}
+      footerLeading={
+        <AppButton variant="text" onClick={onDelete}>
+          Удалить карточку
+        </AppButton>
+      }
     >
       <form className="kb-form" onSubmit={handleSubmit}>
         <AppTextField
@@ -160,36 +157,15 @@ export function TaskEditDialog({
             ))}
           </AppSelect>
         </div>
-        <div className="kb-form__row">
-          <AppDatePickerField
-            label="Дедлайн"
-            name="taskDueDate"
-            value={dueDate}
-            onChange={setDueDate}
-            locale="ru-RU"
-            supportingText="Необязательно."
-          />
-          <AppTextField
-            label="Оценка"
-            name="taskEstimate"
-            type="number"
-            value={estimate}
-            onChange={(event) => {
-              setEstimate(event.target.value)
-              if (error) setError(null)
-            }}
-            error={Boolean(error)}
-            errorText={error ?? undefined}
-            inputProps={{ min: 0, max: 1000, step: 1 }}
-            supportingText="Условные единицы, 0–1000."
-          />
-        </div>
+        <AppDatePickerField
+          label="Дедлайн"
+          name="taskDueDate"
+          value={dueDate}
+          onChange={setDueDate}
+          locale="ru-RU"
+          supportingText="Необязательно."
+        />
       </form>
-      <div className="kb-dialog__danger">
-        <AppButton variant="text" onClick={onDelete}>
-          Удалить карточку
-        </AppButton>
-      </div>
       <section className="kb-task-extras" aria-label="Теги карточки">
         <h3 className="kb-task-extras__title">Теги</h3>
         <TagPicker
