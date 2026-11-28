@@ -1,5 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, jest } from '@jest/globals'
+import { fireEvent, render, screen } from '@testing-library/react'
+
 import { EmptyState } from './EmptyState.js'
 
 describe('EmptyState', () => {

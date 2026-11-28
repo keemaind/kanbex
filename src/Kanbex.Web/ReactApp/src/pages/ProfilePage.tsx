@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
+
 import { useNavigate } from 'react-router'
+
 import { AppButton, AppTextField, StatusBadge } from '@kanbex/ui'
-import { useAuth } from '../features/auth/index.js'
-import { changePassword, deleteAvatar, updateDisplayName, uploadAvatar } from '../services/authApi.js'
-import { describeApiError } from '../services/api.js'
+
 import { fileToAvatarFile, getInitials, validateAvatarFile } from '../app/avatar.js'
+import { useAuth } from '../features/auth/index.js'
+import { describeApiError } from '../services/api.js'
+import { changePassword, deleteAvatar, updateDisplayName, uploadAvatar } from '../services/authApi.js'
 
 /** Страница профиля: аватар на сервере, имя, смена пароля и выход из аккаунта. */
 export function ProfilePage() {
@@ -77,8 +80,10 @@ export function ProfilePage() {
     if (!file) return
 
     const validationError = validateAvatarFile(file)
+
     if (validationError) {
       setAvatarNotice({ tone: 'danger', text: validationError })
+
       return
     }
 

@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, jest } from '@jest/globals'
-import { KanbexLogo } from '../KanbexLogo/index.js'
+import { fireEvent, render, screen } from '@testing-library/react'
+
 import { AppHeader } from './AppHeader.js'
+import { KanbexLogo } from '../KanbexLogo/index.js'
 
 describe('AppHeader', () => {
   it('renders the minimal header without optional blocks', () => {
@@ -33,6 +34,7 @@ describe('AppHeader', () => {
     expect(screen.getByText('Тренажёр Kanban-потока')).toBeInTheDocument()
 
     const projectsLink = screen.getByRole('link', { name: 'Проекты' })
+
     expect(projectsLink).toHaveAttribute('aria-current', 'page')
 
     fireEvent.click(projectsLink)

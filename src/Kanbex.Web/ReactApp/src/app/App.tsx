@@ -1,10 +1,13 @@
 import { useMemo } from 'react'
 import type { CSSProperties } from 'react'
+
 import { BrowserRouter } from 'react-router'
+
 import { AppThemeProvider } from '@kanbex/ui'
+
+import { ThemeSettingsProvider, useThemeSettings } from './themeSettings.js'
 import { AuthProvider } from '../features/auth/index.js'
 import { AppRouter } from '../routes/index.js'
-import { ThemeSettingsProvider, useThemeSettings } from './themeSettings.js'
 
 function hexToHsl(hex: string): [number, number, number] {
   const red = parseInt(hex.slice(1, 3), 16) / 255
@@ -13,14 +16,17 @@ function hexToHsl(hex: string): [number, number, number] {
   const max = Math.max(red, green, blue)
   const min = Math.min(red, green, blue)
   const lightness = (max + min) / 2
+
   if (max === min) return [0, 0, lightness]
 
   const delta = max - min
   const saturation = lightness > 0.5 ? delta / (2 - max - min) : delta / (max + min)
   let hue: number
+
   if (max === red) hue = (green - blue) / delta + (green < blue ? 6 : 0)
   else if (max === green) hue = (blue - red) / delta + 2
   else hue = (red - green) / delta + 4
+
   return [hue / 6, saturation, lightness]
 }
 
@@ -37,10 +43,12 @@ function hslToHex(hue: number, saturation: number, lightness: number): string {
           : shifted < 2 / 3
             ? p + (q - p) * (2 / 3 - shifted) * 6
             : p
+
     return Math.round(value * 255)
       .toString(16)
       .padStart(2, '0')
   }
+
   return `#${channel(hue + 1 / 3)}${channel(hue)}${channel(hue - 1 / 3)}`
 }
 
@@ -50,6 +58,7 @@ function hslToHex(hue: number, saturation: number, lightness: number): string {
 function invertToDark(hex: string, minLightness: number, maxLightness: number): string {
   const [hue, saturation, lightness] = hexToHsl(hex)
   const dark = Math.min(maxLightness, Math.max(minLightness, 1 - lightness))
+
   return hslToHex(hue, saturation, dark)
 }
 

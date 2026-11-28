@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+
 import { AppButton, AppTextField, LoadingState, StatusBadge } from '@kanbex/ui'
-import { addBoardMember, fetchBoardMembers, removeBoardMember } from '../../services/boardsApi.js'
+
 import { describeApiError } from '../../services/api.js'
+import { addBoardMember, fetchBoardMembers, removeBoardMember } from '../../services/boardsApi.js'
+
 import type { BoardMember, ProjectRole } from '../../types/index.js'
 
 export interface BoardMembersSectionProps {
@@ -20,6 +23,7 @@ function initialsOf(displayName: string): string {
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
     .join('')
+
   return initials || 'K'
 }
 
@@ -56,16 +60,20 @@ export function BoardMembersSection({ boardId }: BoardMembersSectionProps) {
     event?.preventDefault()
 
     const trimmed = email.trim()
+
     if (!trimmed) {
       setEmailError('Укажите e-mail участника.')
+
       return
     }
 
     setEmailError(null)
     setActionError(null)
     setAdding(true)
+
     try {
       const added = await addBoardMember(boardId, trimmed)
+
       setMembers((current) => (current ? [...current, added] : [added]))
       setEmail('')
     } catch (cause) {
@@ -78,6 +86,7 @@ export function BoardMembersSection({ boardId }: BoardMembersSectionProps) {
   const handleRemove = async (member: BoardMember) => {
     setActionError(null)
     setRemovingUserId(member.userId)
+
     try {
       await removeBoardMember(boardId, member.userId)
       setMembers((current) =>

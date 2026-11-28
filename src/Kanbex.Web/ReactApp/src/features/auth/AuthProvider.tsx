@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { CurrentUser, LoginRequest, RegisterRequest } from '../../types/index.js'
+
 import { fetchCurrentUser, login as loginRequest, logout as logoutRequest, register as registerRequest } from '../../services/authApi.js'
+
+import type { CurrentUser, LoginRequest, RegisterRequest } from '../../types/index.js'
 
 /**
  * Контекст серверной cookie-сессии.
@@ -38,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void (async () => {
       try {
         const currentUser = await fetchCurrentUser()
+
         if (!cancelled) {
           setUser(currentUser)
         }
@@ -60,8 +63,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (request: LoginRequest) => {
     setPending(true)
+
     try {
       const currentUser = await loginRequest(request)
+
       setUser(currentUser)
     } finally {
       setPending(false)
@@ -70,8 +75,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(async (request: RegisterRequest) => {
     setPending(true)
+
     try {
       const currentUser = await registerRequest(request)
+
       setUser(currentUser)
     } finally {
       setPending(false)
@@ -80,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     setPending(true)
+
     try {
       await logoutRequest()
     } catch {
@@ -113,6 +121,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 /** Доступ к сессии приложения; требует `AuthProvider` выше по дереву. */
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext)
+
   if (!context) throw new Error('useAuth должен вызываться внутри AuthProvider')
+
   return context
 }

@@ -1,6 +1,11 @@
 import { Suspense, lazy } from 'react'
+
 import { Navigate, Route, Routes } from 'react-router'
+
 import { LoadingState } from '@kanbex/ui'
+
+import { MainMenuLayout } from '../app/MainMenuLayout.js'
+import { RequireAuth } from '../app/RequireAuth.js'
 import {
   AboutPage,
   BoardsPage,
@@ -12,8 +17,6 @@ import {
   RegisterPage,
   SettingsPage,
 } from '../pages/index.js'
-import { MainMenuLayout } from '../app/MainMenuLayout.js'
-import { RequireAuth } from '../app/RequireAuth.js'
 
 // Публичная доска грузится отдельным чанком: она не нужна после входа,
 // а анонимные посетители открывают её первой.

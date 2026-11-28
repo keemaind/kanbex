@@ -1,9 +1,12 @@
 /** @jest-environment jsdom */
 import { act } from 'react'
-import { createRoot } from 'react-dom/client'
-import type { Root } from 'react-dom/client'
+
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals'
+import { createRoot } from 'react-dom/client'
+
 import { accentPresets, ThemeSettingsProvider, useThemeSettings } from './themeSettings.js'
+
+import type { Root } from 'react-dom/client'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -70,6 +73,7 @@ describe('ThemeSettingsProvider', () => {
     renderProbe()
 
     const button = container.querySelector('button')
+
     if (!button) throw new Error('Button not found')
 
     act(() => button.click())
@@ -84,6 +88,7 @@ describe('ThemeSettingsProvider', () => {
     const buttons = Array.from(container.querySelectorAll('button'))
     const darkButton = buttons[0]
     const accentButton = buttons[1]
+
     if (!darkButton || !accentButton) throw new Error('Buttons not found')
 
     act(() => {
@@ -95,6 +100,7 @@ describe('ThemeSettingsProvider', () => {
       mode?: string
       seed?: string
     }
+
     expect(stored.mode).toBe('dark')
     expect(stored.seed).toBe(accentPresets[1]!.seed)
   })
@@ -141,6 +147,7 @@ describe('ThemeSettingsProvider', () => {
     renderProbe()
 
     const customButton = Array.from(container.querySelectorAll('button'))[2]
+
     if (!customButton) throw new Error('Custom button not found')
 
     act(() => customButton.click())
@@ -149,6 +156,7 @@ describe('ThemeSettingsProvider', () => {
       seed?: string
       activeId?: string | null
     }
+
     expect(stored.seed).toBe('#2E8B57')
     expect(stored.activeId).toBe('custom-1')
   })

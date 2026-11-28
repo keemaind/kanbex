@@ -1,13 +1,16 @@
 /** @jest-environment jsdom */
 import { act } from 'react'
-import { createRoot } from 'react-dom/client'
-import type { Root } from 'react-dom/client'
+
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals'
+import { createRoot } from 'react-dom/client'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
-import * as authApi from '../services/authApi.js'
-import type { CurrentUser } from '../types/index.js'
-import { AuthProvider, useAuth } from '../features/auth/AuthProvider.js'
+
 import { RequireAuth } from './RequireAuth.js'
+import { AuthProvider, useAuth } from '../features/auth/AuthProvider.js'
+import * as authApi from '../services/authApi.js'
+
+import type { CurrentUser } from '../types/index.js'
+import type { Root } from 'react-dom/client'
 
 jest.mock('../services/authApi.js', () => ({
   fetchCurrentUser: jest.fn(),
@@ -29,6 +32,7 @@ const demoUser: CurrentUser = {
 
 function LocationProbe() {
   const location = useLocation()
+
   return (
     <>
       <output data-testid="location">{`${location.pathname}${location.search}${location.hash}`}</output>
@@ -43,6 +47,7 @@ function ProtectedContent() {
 
 function LogoutControl() {
   const { logout } = useAuth()
+
   return (
     <button onClick={() => void logout()} type="button">
       logout
@@ -94,6 +99,7 @@ afterEach(async () => {
 describe('RequireAuth', () => {
   it('shows a loading state while the session is being checked', async () => {
     let resolveSession!: (user: CurrentUser | null) => void
+
     api.fetchCurrentUser.mockReturnValue(
       new Promise<CurrentUser | null>((resolve) => {
         resolveSession = resolve
@@ -131,6 +137,7 @@ describe('RequireAuth', () => {
     api.fetchCurrentUser.mockResolvedValue(demoUser)
     await renderAt('/boards')
     const logout = container.querySelector('button')
+
     if (!logout) throw new Error('Logout button not found')
 
     await act(async () => logout.click())

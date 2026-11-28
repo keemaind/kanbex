@@ -1,5 +1,7 @@
 import { useState } from 'react'
+
 import { AppOption, AppSelect } from '@kanbex/ui'
+
 import { PersonalizationCard } from '../app/PersonalizationCard.js'
 import { accentPresets, useThemeSettings } from '../app/themeSettings.js'
 

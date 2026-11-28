@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+
 import { GitHubIcon } from '../app/icons.js'
 
 const repositoryUrl = 'https://github.com/keemaind/kanbex'

@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from '@jest/globals'
+import { render, screen } from '@testing-library/react'
+
 import { KanbexLogo } from './KanbexLogo.js'
 
 describe('KanbexLogo', () => {
@@ -7,6 +8,7 @@ describe('KanbexLogo', () => {
     render(<KanbexLogo />)
 
     const logo = screen.getByRole('img', { name: 'Kanbex' })
+
     expect(logo).toHaveClass('kb-logo')
     expect(logo).toHaveAttribute('viewBox', '105 65 754 154')
     expect(logo).toHaveStyle({ height: '32px' })
@@ -20,6 +22,7 @@ describe('KanbexLogo', () => {
     render(<KanbexLogo height={48} label="Логотип Kanbex" className="kb-logo--header" />)
 
     const logo = screen.getByRole('img', { name: 'Логотип Kanbex' })
+
     expect(logo).toHaveClass('kb-logo', 'kb-logo--header')
     expect(logo).toHaveStyle({ height: '48px' })
   })

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router'
+
 import { EmptyState } from '@kanbex/ui'
 
 /** Страница для неизвестных клиентских маршрутов. */

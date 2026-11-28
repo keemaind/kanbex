@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+
 import { AppButton, AppTextField, LoadingState } from '@kanbex/ui'
-import { createComment, deleteComment, fetchComments } from '../../services/boardsApi.js'
+
 import { describeApiError } from '../../services/api.js'
+import { createComment, deleteComment, fetchComments } from '../../services/boardsApi.js'
+
 import type { Comment } from '../../types/index.js'
 
 export interface TaskCommentsProps {
@@ -20,7 +23,9 @@ const MAX_LENGTH = 4000
 
 function formatCommentDate(iso: string): string {
   const date = new Date(iso)
+
   if (Number.isNaN(date.getTime())) return iso
+
   return date.toLocaleString('ru-RU', {
     day: 'numeric',
     month: 'short',
@@ -72,18 +77,24 @@ export function TaskComments({ boardId, taskId, currentUserId, isCreator, onCoun
     event?.preventDefault()
 
     const trimmed = content.trim()
+
     if (trimmed.length === 0) {
       setContentError('Введите текст комментария.')
+
       return
     }
 
     setContentError(null)
     setSubmitting(true)
+
     try {
       const created = await createComment(boardId, taskId, trimmed)
+
       setComments((current) => {
         const next = current ? [...current, created] : [created]
+
         onCountChangeRef.current(next.length)
+
         return next
       })
       setContent('')
@@ -96,11 +107,14 @@ export function TaskComments({ boardId, taskId, currentUserId, isCreator, onCoun
 
   const handleDelete = async (comment: Comment) => {
     setDeletingId(comment.id)
+
     try {
       await deleteComment(boardId, taskId, comment.id)
       setComments((current) => {
         const next = current ? current.filter((item) => item.id !== comment.id) : []
+
         onCountChangeRef.current(next.length)
+
         return next
       })
     } catch (cause) {

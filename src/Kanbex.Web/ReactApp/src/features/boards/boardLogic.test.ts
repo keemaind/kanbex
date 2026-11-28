@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals'
-import type { Board, BoardColumn, TaskCard } from '../../types/index.js'
+
 import {
   addTaskToColumn,
   canAcceptTask,
@@ -15,6 +15,8 @@ import {
   replaceColumnsInBoard,
   updateTaskInBoard,
 } from './boardLogic.js'
+
+import type { Board, BoardColumn, TaskCard } from '../../types/index.js'
 
 function task(id: string, order = 0): TaskCard {
   return {
@@ -86,6 +88,7 @@ describe('getBoardProgress', () => {
 
   it('rounds the percentage of completed tasks', () => {
     const source = board()
+
     source.columns[2].tasks = [task('x'), task('y'), task('z')]
 
     expect(getBoardProgress(source)).toEqual({ completed: 3, total: 6, percent: 50 })
@@ -102,6 +105,7 @@ describe('isTaskCompleted', () => {
   it('marks a task of the last column as completed', () => {
     const columns = board().columns
     const completed = task('c')
+
     columns[2].tasks = [completed]
 
     expect(isTaskCompleted(completed, columns[2], columns)).toBe(true)
@@ -110,6 +114,7 @@ describe('isTaskCompleted', () => {
   it('keeps tasks of earlier columns active', () => {
     const columns = board().columns
     const done = task('c')
+
     columns[2].tasks = [done]
 
     expect(isTaskCompleted(task('a'), columns[0], columns)).toBe(false)
@@ -361,6 +366,7 @@ describe('task metadata fields', () => {
     const updatedTask = updated
       ?.columns.find((item) => item.id === 'todo')
       ?.tasks.find((item) => item.id === 'a')
+
     expect(updatedTask).toMatchObject({
       assigneeId: 'user-2',
       dueDate: '2026-11-30',
@@ -370,6 +376,7 @@ describe('task metadata fields', () => {
 
   it('keeps metadata when moving a task between columns', () => {
     const prepared = updateTaskInBoard(board(), 'a', { assigneeId: 'user-1', dueDate: '2026-12-05', estimate: 3 })
+
     if (!prepared) throw new Error('updateTaskInBoard returned null')
 
     const moved = moveTaskToColumn(prepared, 'a', 'done')

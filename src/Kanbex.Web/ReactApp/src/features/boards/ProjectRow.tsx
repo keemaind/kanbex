@@ -1,8 +1,11 @@
 import { Link, useNavigate } from 'react-router'
+
 import { AppIconButton, AppLinearProgress, AppMenu, AppMenuItem, StatusBadge } from '@kanbex/ui'
-import type { BoardSummary, ProjectRole } from '../../types/index.js'
-import { ClockIcon, FolderIcon, MoreIcon } from '../../app/icons.js'
+
 import { describeUpdatedAt, getProjectProgress } from './projectSummary.js'
+import { ClockIcon, FolderIcon, MoreIcon } from '../../app/icons.js'
+
+import type { BoardSummary, ProjectRole } from '../../types/index.js'
 
 export interface ProjectRowProps {
   project: BoardSummary

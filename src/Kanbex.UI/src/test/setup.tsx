@@ -1,8 +1,9 @@
 import '@testing-library/jest-dom/jest-globals'
-import { cleanup } from '@testing-library/react'
-import { afterEach, jest } from '@jest/globals'
 import * as mockReact from 'react'
 import type * as ReactTypes from 'react'
+
+import { afterEach, jest } from '@jest/globals'
+import { cleanup } from '@testing-library/react'
 
 afterEach(cleanup)
 

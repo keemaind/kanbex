@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
+
 import { AppButton, AppTextField, LoadingState } from '@kanbex/ui'
-import { createTag, fetchTags, setTaskTags } from '../../services/boardsApi.js'
-import { describeApiError } from '../../services/api.js'
-import type { Tag, TaskCard } from '../../types/index.js'
+
 import { TagColorPicker } from './TagColorPicker.js'
+import { describeApiError } from '../../services/api.js'
+import { createTag, fetchTags, setTaskTags } from '../../services/boardsApi.js'
+
+import type { Tag, TaskCard } from '../../types/index.js'
 
 export interface TagPickerProps {
   boardId: string
@@ -50,6 +53,7 @@ export function TagPicker({ boardId, task, isCreator, onTagsChange }: TagPickerP
     if (busyTagId) return
 
     const nextIds = new Set(selectedIds)
+
     if (nextIds.has(tag.id)) {
       nextIds.delete(tag.id)
     } else {
@@ -58,8 +62,10 @@ export function TagPicker({ boardId, task, isCreator, onTagsChange }: TagPickerP
 
     setBusyTagId(tag.id)
     setError(null)
+
     try {
       const next = await setTaskTags(boardId, task.id, [...nextIds])
+
       onTagsChange(next)
     } catch (cause) {
       setError(describeApiError(cause))
@@ -72,19 +78,24 @@ export function TagPicker({ boardId, task, isCreator, onTagsChange }: TagPickerP
     event?.preventDefault()
 
     const name = newName.trim()
+
     if (name.length === 0 || name.length > 64) {
       setError('Имя тега — от 1 до 64 символов.')
+
       return
     }
 
     setCreating(true)
     setError(null)
+
     try {
       const created = await createTag(boardId, name, newColor)
+
       setCatalog((current) => (current ? [...current, created] : [created]))
       setNewName('')
       setNewColor(DEFAULT_COLOR)
       const next = await setTaskTags(boardId, task.id, [...selectedIds, created.id])
+
       onTagsChange(next)
     } catch (cause) {
       setError(describeApiError(cause))
@@ -110,6 +121,7 @@ export function TagPicker({ boardId, task, isCreator, onTagsChange }: TagPickerP
         <div className="kb-tag-picker__chips">
           {catalog.map((tag) => {
             const selected = selectedIds.has(tag.id)
+
             return (
               <button
                 key={tag.id}

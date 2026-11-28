@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+
 import { AppDialog, AppTextField } from '@kanbex/ui'
-import type { Board } from '../../types/index.js'
+
 import { BoardMembersSection } from './BoardMembersSection.js'
 import { ShareBoardSection } from './ShareBoardSection.js'
+
+import type { Board } from '../../types/index.js'
 
 export interface BoardDetailsValues {
   title: string
@@ -33,8 +36,10 @@ export function BoardSettingsDialog({ board, onSave, onVisibilityChange, onClose
     event?.preventDefault()
 
     const trimmedTitle = nextTitle.trim()
+
     if (trimmedTitle.length < 2) {
       setError('Название доски должно содержать минимум 2 символа.')
+
       return
     }
 

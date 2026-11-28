@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+
 import { AppDatePickerField, AppDialog, AppOption, AppSelect, AppTextField } from '@kanbex/ui'
-import type { BoardMember, TaskPriority } from '../../types/index.js'
-import type { NewTaskInput } from './boardLogic.js'
+
 import { toApiDate } from './taskDates.js'
+
+import type { NewTaskInput } from './boardLogic.js'
+import type { BoardMember, TaskPriority } from '../../types/index.js'
 
 export interface TaskCreateDialogProps {
   /** Название колонки, в которую попадёт карточка. */
@@ -39,8 +42,10 @@ export function TaskCreateDialog({ columnTitle, members, onCreate, onCancel }: T
     event?.preventDefault()
 
     const trimmedTitle = title.trim()
+
     if (trimmedTitle.length < 2) {
       setError('Название должно содержать минимум 2 символа.')
+
       return
     }
 

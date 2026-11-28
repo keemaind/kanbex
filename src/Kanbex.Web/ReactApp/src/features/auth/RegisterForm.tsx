@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+
 import { AppButton, AppTextField } from '@kanbex/ui'
+
 import type { RegisterRequest } from '../../types/index.js'
 
 export interface RegisterFormProps {
@@ -21,24 +23,34 @@ export function RegisterForm({ onSubmit, pending = false, error = null }: Regist
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+
     if (displayName.trim().length < 2) {
       setFieldError('Укажите имя длиной не менее двух символов.')
+
       return
     }
+
     if (!email.includes('@')) {
       setFieldError('Укажите корректный e-mail.')
+
       return
     }
+
     if (password.length < 6) {
       setFieldError('Пароль должен содержать минимум 6 символов.')
+
       return
     }
+
     if (!/[0-9]/.test(password)) {
       setFieldError('Пароль должен содержать хотя бы одну цифру.')
+
       return
     }
+
     if (!/[a-z]/.test(password)) {
       setFieldError('Пароль должен содержать хотя бы одну строчную букву.')
+
       return
     }
     setFieldError(null)

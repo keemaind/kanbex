@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+
 import { AppButton, AppIconButton, AppTextField } from '@kanbex/ui'
+
 import { EyeIcon, EyeOffIcon } from '../../app/icons.js'
+
 import type { LoginRequest } from '../../types/index.js'
 
 export interface LoginFormProps {
@@ -22,12 +25,16 @@ export function LoginForm({ onSubmit, pending = false, error = null }: LoginForm
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+
     if (!email.includes('@')) {
       setFieldError('Укажите корректный e-mail.')
+
       return
     }
+
     if (password.length < 6) {
       setFieldError('Пароль должен содержать минимум 6 символов.')
+
       return
     }
     setFieldError(null)

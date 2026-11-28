@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from '@jest/globals'
+import { render, screen } from '@testing-library/react'
+
 import { StatusBadge } from './StatusBadge.js'
 
 describe('StatusBadge', () => {
@@ -7,6 +8,7 @@ describe('StatusBadge', () => {
     render(<StatusBadge>Черновик</StatusBadge>)
 
     const badge = screen.getByText('Черновик')
+
     expect(badge).toHaveClass('kb-badge', 'kb-badge--neutral')
     expect(badge.querySelector('.kb-badge__dot')).toBeNull()
   })
@@ -22,6 +24,7 @@ describe('StatusBadge', () => {
       )
 
       const badge = screen.getByTitle(`Подсказка ${tone}`)
+
       expect(badge).toHaveClass(`kb-badge--${tone}`)
       expect(badge.querySelector('.kb-badge__dot')).toHaveAttribute('aria-hidden', 'true')
       unmount()

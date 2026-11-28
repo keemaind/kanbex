@@ -1,15 +1,19 @@
+import type { CSSProperties } from 'react'
+
 import { useDraggable } from '@dnd-kit/core'
+
 import { StatusBadge } from '@kanbex/ui'
 import type { BadgeTone } from '@kanbex/ui'
-import type { CSSProperties } from 'react'
+
+import { getInitials } from '../../app/avatar.js'
+import { CalendarIcon, CheckIcon, DragIndicatorIcon, NoteIcon } from '../../app/icons.js'
+
 import type {
   BoardColumn as BoardColumnModel,
   BoardMember,
   TaskCard as TaskCardModel,
   TaskPriority,
 } from '../../types/index.js'
-import { getInitials } from '../../app/avatar.js'
-import { CalendarIcon, CheckIcon, DragIndicatorIcon, NoteIcon } from '../../app/icons.js'
 
 export interface TaskCardProps {
   task: TaskCardModel
@@ -47,16 +51,21 @@ function isOverdue(dueDate: string, completed: boolean): boolean {
   if (completed) return false
 
   const due = new Date(dueDate)
+
   if (Number.isNaN(due.getTime())) return false
 
   const today = new Date()
+
   today.setHours(0, 0, 0, 0)
+
   return due < today
 }
 
 function formatDue(dueDate: string): string {
   const date = new Date(dueDate)
+
   if (Number.isNaN(date.getTime())) return dueDate
+
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
 }
 

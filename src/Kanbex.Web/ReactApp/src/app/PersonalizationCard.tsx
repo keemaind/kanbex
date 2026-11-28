@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+
 import {
   AppCarousel,
   AppCarouselItem,
@@ -7,6 +8,7 @@ import {
   AppSwitch,
   generateColorScheme,
 } from '@kanbex/ui'
+
 import { accentPresets, useThemeSettings } from './themeSettings.js'
 import { CheckIcon, EditIcon, PlusIcon } from '../app/icons.js'
 
@@ -83,6 +85,7 @@ export function PersonalizationCard() {
     () =>
       accentPresets.map((preset) => {
         const scheme = generateColorScheme({ seedColor: preset.seed, mode })
+
         return {
           name: preset.name,
           seed: preset.seed,
@@ -109,6 +112,7 @@ export function PersonalizationCard() {
 
   const handleRemoveCustom = (id: string) => {
     removeCustomPalette(id)
+
     if (activeId === id) {
       selectTheme(accentPresets[0]!.seed, null)
     }

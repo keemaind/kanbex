@@ -1,5 +1,6 @@
-import type { CurrentUser, LoginRequest, RegisterRequest } from '../types/index.js'
 import { toApiError } from './api.js'
+
+import type { CurrentUser, LoginRequest, RegisterRequest } from '../types/index.js'
 
 export interface ChangePasswordRequest {
   currentPassword: string
@@ -33,11 +34,13 @@ async function fetchRequestToken(): Promise<string> {
   }
 
   const body = (await response.json()) as AntiforgeryTokenResponse
+
   if (!body.requestToken) {
     throw new Error('API вернул пустой antiforgery-токен.')
   }
 
   requestToken = body.requestToken
+
   return requestToken
 }
 
@@ -78,6 +81,7 @@ export function fetchCurrentUser(): Promise<CurrentUser | null> {
     currentUserRequest = null
     throw error
   })
+
   return currentUserRequest
 }
 
@@ -102,6 +106,7 @@ async function requestCurrentUser(): Promise<CurrentUser | null> {
 /** Выполняет вход и возвращает безопасный DTO пользователя. */
 export async function login(request: LoginRequest): Promise<CurrentUser> {
   const user = await postJson<CurrentUser>('/api/auth/login', request)
+
   if (!user) {
     throw new Error('API вернул пустой ответ входа.')
   }
@@ -110,18 +115,21 @@ export async function login(request: LoginRequest): Promise<CurrentUser> {
   // токен не подойдёт для выхода, поэтому следующий запрос получит новый.
   requestToken = null
   currentUserRequest = Promise.resolve(user)
+
   return user
 }
 
 /** Создаёт учётную запись и сразу открывает cookie-сессию. */
 export async function register(request: RegisterRequest): Promise<CurrentUser> {
   const user = await postJson<CurrentUser>('/api/auth/register', request)
+
   if (!user) {
     throw new Error('API вернул пустой ответ регистрации.')
   }
 
   requestToken = null
   currentUserRequest = Promise.resolve(user)
+
   return user
 }
 
@@ -138,11 +146,13 @@ export async function logout(): Promise<void> {
 /** Обновляет отображаемое имя (`POST /api/auth/display-name`). */
 export async function updateDisplayName(displayName: string): Promise<CurrentUser> {
   const user = await postJson<CurrentUser>('/api/auth/display-name', { displayName })
+
   if (!user) {
     throw new Error('API вернул пустой ответ.')
   }
 
   currentUserRequest = Promise.resolve(user)
+
   return user
 }
 
@@ -158,6 +168,7 @@ export async function changePassword(request: ChangePasswordRequest): Promise<vo
 export async function uploadAvatar(file: File): Promise<CurrentUser> {
   const token = requestToken ?? (await fetchRequestToken())
   const form = new FormData()
+
   form.append('file', file)
 
   const response = await fetch('/api/auth/avatar', {
@@ -179,7 +190,9 @@ export async function uploadAvatar(file: File): Promise<CurrentUser> {
   }
 
   const user = (await response.json()) as CurrentUser
+
   currentUserRequest = Promise.resolve(user)
+
   return user
 }
 
@@ -203,6 +216,8 @@ export async function deleteAvatar(): Promise<CurrentUser> {
   }
 
   const user = (await response.json()) as CurrentUser
+
   currentUserRequest = Promise.resolve(user)
+
   return user
 }

@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
+
 import { LoadingState } from '@kanbex/ui'
-import { fetchTaskHistory } from '../../services/boardsApi.js'
+
 import { describeApiError } from '../../services/api.js'
+import { fetchTaskHistory } from '../../services/boardsApi.js'
+
 import type { BoardColumn as BoardColumnModel, TaskHistoryEntry } from '../../types/index.js'
 
 export interface TaskHistoryProps {
@@ -29,12 +32,14 @@ const fieldLabels: Record<string, string> = {
 
 function columnName(columns: BoardColumnModel[], columnId: string | null): string {
   if (!columnId) return '—'
+
   return columns.find((column) => column.id === columnId)?.title ?? 'колонка'
 }
 
 function describeDetails(entry: TaskHistoryEntry, members: TaskHistoryProps['members']): string | null {
   if (entry.eventType === 'assigned') {
     const name = members?.find((member) => member.userId === entry.details)?.displayName
+
     return name ? `Исполнитель: ${name}` : null
   }
 
@@ -46,6 +51,7 @@ function describeDetails(entry: TaskHistoryEntry, members: TaskHistoryProps['mem
     const fields = entry.details
       .split(',')
       .map((field) => fieldLabels[field.trim()] ?? field.trim())
+
     return fields.length > 0 ? `Изменены поля: ${fields.join(', ')}` : null
   }
 
@@ -54,7 +60,9 @@ function describeDetails(entry: TaskHistoryEntry, members: TaskHistoryProps['mem
 
 function formatDateTime(iso: string): string {
   const date = new Date(iso)
+
   if (Number.isNaN(date.getTime())) return iso
+
   return date.toLocaleString('ru-RU', {
     day: 'numeric',
     month: 'long',

@@ -1,9 +1,12 @@
 import { useDroppable } from '@dnd-kit/core'
+
 import { AppButton } from '@kanbex/ui'
-import type { BoardColumn as BoardColumnModel, BoardMember, TaskCard as TaskCardModel } from '../../types/index.js'
+
 import { canAcceptTask, getWipState, isTaskCompleted } from './boardLogic.js'
 import { TaskCard } from './TaskCard.js'
 import { NoteIcon } from '../../app/icons.js'
+
+import type { BoardColumn as BoardColumnModel, BoardMember, TaskCard as TaskCardModel } from '../../types/index.js'
 
 export interface BoardColumnProps {
   column: BoardColumnModel

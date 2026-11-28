@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+
 import {
   DndContext,
   DragOverlay,
@@ -9,8 +10,10 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
-import type { Board, BoardMember, TaskCard as TaskCardModel } from '../../types/index.js'
+
 import { BoardColumn } from './BoardColumn.js'
+
+import type { Board, BoardMember, TaskCard as TaskCardModel } from '../../types/index.js'
 
 export interface KanbanBoardProps {
   board: Board
@@ -53,16 +56,19 @@ export function KanbanBoard({
   const handleDragStart = (event: DragStartEvent) => {
     const taskId = String(event.active.id)
     const found = board.columns.flatMap((column) => column.tasks).find((task) => task.id === taskId)
+
     setActiveTask(found ?? null)
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveTask(null)
     const { active, over } = event
+
     if (!over) return
 
     const taskId = String(active.id)
     const targetColumnId = String(over.id)
+
     if (taskId && targetColumnId) onMoveTask(taskId, targetColumnId)
   }
 

@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react'
+
 import { Navigate, useLocation } from 'react-router'
+
 import { LoadingState } from '@kanbex/ui'
+
 import { useAuth } from '../features/auth/index.js'
 
 /**

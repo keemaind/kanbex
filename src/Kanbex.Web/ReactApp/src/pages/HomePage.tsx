@@ -1,12 +1,16 @@
 import { useState, type ReactNode } from 'react'
+
 import { Link, useNavigate } from 'react-router'
+
 import { AppButton, AppDialog, EmptyState, LoadingState, StatusBadge } from '@kanbex/ui'
-import { ProjectCreateDialog, ProjectRow, boardTemplates, useProjects } from '../features/boards/index.js'
-import { useAuth } from '../features/auth/index.js'
-import { createBoardFromTemplate } from '../services/boardsApi.js'
+
 import { ExpressiveShape, type ExpressiveShapeName } from '../app/expressiveShapes.js'
 import { ArrowForwardIcon, CodeIcon, GroupsIcon, PersonIcon, PlusIcon, SchoolIcon } from '../app/icons.js'
+import { useAuth } from '../features/auth/index.js'
+import { ProjectCreateDialog, ProjectRow, boardTemplates, useProjects } from '../features/boards/index.js'
 import { describeApiError } from '../services/api.js'
+import { createBoardFromTemplate } from '../services/boardsApi.js'
+
 import type { BoardSummary, ProjectInput } from '../types/index.js'
 
 const templateIcons: Record<string, ReactNode> = {
@@ -50,6 +54,7 @@ export function HomePage() {
     if (!projectToDelete) return
 
     const project = projectToDelete
+
     setProjectToDelete(null)
     void removeProject(project.id).catch((cause: unknown) => {
       setActionError(describeApiError(cause))

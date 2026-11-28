@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+
 import type { BadgeTone } from '../../types.js'
 
 export interface StatusBadgeProps {

@@ -1,9 +1,13 @@
 import { useState } from 'react'
+
 import { Link, useNavigate } from 'react-router'
+
 import { KanbexLogo, StatusBadge } from '@kanbex/ui'
-import { LoginForm, useAuth } from '../features/auth/index.js'
+
 import { ExpressiveShape } from '../app/expressiveShapes.js'
+import { LoginForm, useAuth } from '../features/auth/index.js'
 import { describeApiError } from '../services/api.js'
+
 import type { LoginRequest } from '../types/index.js'
 
 /**
@@ -18,6 +22,7 @@ export function LoginPage() {
 
   const handleSubmit = async (request: LoginRequest) => {
     setError(null)
+
     try {
       await login(request)
       navigate('/home', { replace: true })

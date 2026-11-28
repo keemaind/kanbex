@@ -26,6 +26,7 @@ export class ApiError extends Error {
  */
 export async function toApiError(response: Response, fallback: string): Promise<ApiError> {
   let body: Partial<ApiProblem> | null = null
+
   try {
     body = (await response.json()) as Partial<ApiProblem>
   } catch {
@@ -47,6 +48,7 @@ export function describeApiError(error: unknown): string {
     const fieldMessage = error.problem.errors
       ? Object.values(error.problem.errors).flat().find(Boolean)
       : undefined
+
     return fieldMessage ?? error.problem.detail ?? error.problem.title
   }
 

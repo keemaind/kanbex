@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+
 import { AppButton } from '../AppButton/index.js'
 
 export interface AppDialogProps {

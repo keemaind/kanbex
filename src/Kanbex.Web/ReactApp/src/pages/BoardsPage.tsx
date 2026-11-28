@@ -1,8 +1,11 @@
 import { useState } from 'react'
+
 import { AppButton, AppDialog, AppSearchBar, EmptyState, LoadingState, StatusBadge } from '@kanbex/ui'
+
 import { PlusIcon } from '../app/icons.js'
 import { ProjectCreateDialog, ProjectRow, pluralize, useProjects } from '../features/boards/index.js'
 import { describeApiError } from '../services/api.js'
+
 import type { BoardSummary, ProjectInput } from '../types/index.js'
 
 /**
@@ -45,6 +48,7 @@ export function BoardsPage() {
     if (!projectToDelete) return
 
     const project = projectToDelete
+
     setProjectToDelete(null)
     void removeProject(project.id).catch((cause: unknown) => {
       setActionError(describeApiError(cause))

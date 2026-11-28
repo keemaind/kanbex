@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
+
 import { Link, useNavigate, useParams } from 'react-router'
+
 import {
   AppButton,
   AppDialog,
@@ -10,6 +12,9 @@ import {
   LoadingState,
   StatusBadge,
 } from '@kanbex/ui'
+
+import { ArrowBackIcon, FolderIcon, MoreIcon, PlusIcon } from '../app/icons.js'
+import { useAuth } from '../features/auth/AuthProvider.js'
 import {
   BoardSettingsDialog,
   ColumnManagerDialog,
@@ -21,10 +26,9 @@ import {
   pluralize,
   useBoard,
 } from '../features/boards/index.js'
-import type { NewTaskInput, TaskEditValues } from '../features/boards/index.js'
-import { useAuth } from '../features/auth/AuthProvider.js'
-import { ArrowBackIcon, FolderIcon, MoreIcon, PlusIcon } from '../app/icons.js'
 import { fetchBoardMembers } from '../services/boardsApi.js'
+
+import type { NewTaskInput, TaskEditValues } from '../features/boards/index.js'
 import type { BoardMember } from '../types/index.js'
 import type { Tag } from '../types/index.js'
 import type { TaskCard as TaskCardModel } from '../types/index.js'
@@ -84,6 +88,7 @@ export function BoardPage() {
     if (!boardIdPattern.test(boardId)) return
 
     let active = true
+
     fetchBoardMembers(boardId)
       .then((list) => {
         if (active) setMembers(list)
@@ -92,6 +97,7 @@ export function BoardPage() {
         // Без участников достаточно пустого списка исполнителя.
         if (active) setMembers([])
       })
+
     return () => {
       active = false
     }
@@ -108,6 +114,7 @@ export function BoardPage() {
     }
 
     window.addEventListener('beforeunload', handler)
+
     return () => window.removeEventListener('beforeunload', handler)
   }, [dirty])
 
@@ -180,16 +187,19 @@ export function BoardPage() {
     if (!createColumnId) return
 
     const result = addTask(createColumnId, input)
+
     setCreateColumnId(null)
     if (!result) return
 
     if (result.rejection === 'wip-limit') {
       setNotice({ tone: 'danger', text: 'Задача не добавлена: в колонке достигнут WIP-лимит.' })
+
       return
     }
 
     if (!result.task) {
       setNotice({ tone: 'danger', text: 'Задача не добавлена: проверьте название и выбранную колонку.' })
+
       return
     }
 
@@ -445,6 +455,7 @@ export function BoardPage() {
         onConfirm={() => {
           setClearOpen(false)
           const cleared = clearTasks()
+
           setNotice({ tone: 'success', text: `Удалено карточек: ${cleared}.` })
         }}
         onCancel={() => setClearOpen(false)}

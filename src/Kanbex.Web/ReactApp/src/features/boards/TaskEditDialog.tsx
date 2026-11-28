@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+
 import { AppButton, AppDatePickerField, AppDialog, AppOption, AppSelect, AppTextField } from '@kanbex/ui'
-import type { BoardColumn as BoardColumnModel, BoardMember, Tag, TaskCard, TaskPriority } from '../../types/index.js'
-import { TaskComments } from './TaskComments.js'
+
 import { TagPicker } from './TagPicker.js'
-import { TaskHistory } from './TaskHistory.js'
+import { TaskComments } from './TaskComments.js'
 import { fromApiDate, toApiDate } from './taskDates.js'
+import { TaskHistory } from './TaskHistory.js'
+
+import type { BoardColumn as BoardColumnModel, BoardMember, Tag, TaskCard, TaskPriority } from '../../types/index.js'
 
 export interface TaskEditValues {
   title: string
@@ -71,8 +74,10 @@ export function TaskEditDialog({
     event?.preventDefault()
 
     const trimmedTitle = title.trim()
+
     if (trimmedTitle.length < 2) {
       setError('Название должно содержать минимум 2 символа.')
+
       return
     }
 

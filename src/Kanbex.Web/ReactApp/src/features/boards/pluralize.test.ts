@@ -1,4 +1,5 @@
 import { describe, expect, it } from '@jest/globals'
+
 import { pluralize } from './pluralize.js'
 
 const forms = ['проект', 'проекта', 'проектов'] as const

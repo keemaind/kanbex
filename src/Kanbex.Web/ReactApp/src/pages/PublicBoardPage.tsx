@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
+
 import { Link, useNavigate, useParams } from 'react-router'
+
 import { EmptyState, LoadingState, StatusBadge } from '@kanbex/ui'
-import { fetchPublicBoard } from '../services/boardsApi.js'
-import { describeApiError } from '../services/api.js'
+
 import { KanbanBoard } from '../features/boards/index.js'
+import { describeApiError } from '../services/api.js'
+import { fetchPublicBoard } from '../services/boardsApi.js'
+
 import type { Board, PublicBoard } from '../types/index.js'
 
 /**

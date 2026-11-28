@@ -69,6 +69,7 @@ function isCustomPaletteList(value: unknown): value is CustomPalette[] {
     Array.isArray(value) &&
     value.every((item) => {
       const palette = item as CustomPalette
+
       return (
         typeof palette?.id === 'string' &&
         palette.id.length > 0 &&
@@ -96,16 +97,19 @@ function readStoredSettings(): StoredSettings {
     activeId: null,
     customPalettes: [] as CustomPalette[],
   }
+
   if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') return fallback
 
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
+
     if (!raw) return fallback
 
     const parsed = JSON.parse(raw) as StoredTheme
     const customPalettes = isCustomPaletteList(parsed.customPalettes) ? parsed.customPalettes : fallback.customPalettes
     // Ссылка на свою тему валидна, только если такая тема ещё существует.
     const activePalette = customPalettes.find((palette) => palette.id === parsed.activeId)
+
     return {
       mode: isThemeMode(parsed.mode) ? parsed.mode : fallback.mode,
       seed: activePalette ? activePalette.seed : isSeedColor(parsed.seed) ? parsed.seed : fallback.seed,
@@ -165,8 +169,10 @@ export function ThemeSettingsProvider({ children }: { children: ReactNode }) {
 
 export function useThemeSettings(): ThemeSettings {
   const settings = useContext(ThemeSettingsContext)
+
   if (!settings) {
     throw new Error('useThemeSettings должен использоваться внутри ThemeSettingsProvider.')
   }
+
   return settings
 }

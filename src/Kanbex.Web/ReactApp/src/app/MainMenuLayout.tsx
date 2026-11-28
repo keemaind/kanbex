@@ -1,14 +1,17 @@
 import { useState } from 'react'
+
 import { Outlet, useLocation, useNavigate } from 'react-router'
+
 import {
   AppIconButton,
   AppNavigationRail,
   AppNavigationRailAction,
   AppNavigationRailItem,
 } from '@kanbex/ui'
-import { useAuth } from '../features/auth/index.js'
+
 import { getInitials } from './avatar.js'
 import { FolderIcon, HomeIcon, InfoIcon, MenuIcon, MenuOpenIcon, SettingsIcon } from './icons.js'
+import { useAuth } from '../features/auth/index.js'
 
 const destinations = [
   { value: 'home', label: 'Главная', path: '/home', icon: <HomeIcon /> },
@@ -19,6 +22,7 @@ const destinations = [
 
 function getActiveDestination(pathname: string): string {
   if (pathname === '/home') return 'home'
+
   if (
     pathname === '/boards' ||
     pathname === '/board' ||
@@ -29,6 +33,7 @@ function getActiveDestination(pathname: string): string {
   }
   if (pathname === '/about') return 'about'
   if (pathname === '/settings') return 'settings'
+
   return ''
 }
 

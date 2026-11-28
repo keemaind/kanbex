@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+
 import { AppDialog, AppTextField } from '@kanbex/ui'
+
 import type { ProjectInput } from '../../types/index.js'
 
 export interface ProjectCreateDialogProps {
@@ -21,8 +23,10 @@ export function ProjectCreateDialog({ onCreate, onCancel }: ProjectCreateDialogP
     event?.preventDefault()
 
     const trimmedTitle = title.trim()
+
     if (trimmedTitle.length < 2) {
       setError('Название должно содержать минимум 2 символа.')
+
       return
     }
 

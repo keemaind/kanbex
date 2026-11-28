@@ -30,6 +30,7 @@ export function TagColorPicker({ value, onChange }: TagColorPickerProps) {
     <div className="kb-color-picker" role="radiogroup" aria-label="Цвет тега">
       {tagColorPresets.map((preset) => {
         const selected = value.toLowerCase() === preset.color.toLowerCase()
+
         return (
           <button
             key={preset.color}

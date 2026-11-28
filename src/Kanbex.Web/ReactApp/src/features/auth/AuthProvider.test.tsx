@@ -1,11 +1,14 @@
 /** @jest-environment jsdom */
 import { act } from 'react'
-import { createRoot } from 'react-dom/client'
-import type { Root } from 'react-dom/client'
+
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals'
-import * as authApi from '../../services/authApi.js'
-import type { CurrentUser } from '../../types/index.js'
+import { createRoot } from 'react-dom/client'
+
 import { AuthProvider, useAuth } from './AuthProvider.js'
+import * as authApi from '../../services/authApi.js'
+
+import type { CurrentUser } from '../../types/index.js'
+import type { Root } from 'react-dom/client'
 
 jest.mock('../../services/authApi.js', () => ({
   fetchCurrentUser: jest.fn(),
@@ -30,6 +33,7 @@ function deferred<T>() {
   const promise = new Promise<T>((resolvePromise) => {
     resolve = resolvePromise
   })
+
   return { promise, resolve }
 }
 
@@ -74,6 +78,7 @@ async function renderProvider() {
 
 async function click(label: string) {
   const button = [...container.querySelectorAll('button')].find((item) => item.textContent === label)
+
   if (!button) throw new Error(`Button not found: ${label}`)
   await act(async () => button.click())
 }
@@ -84,7 +89,9 @@ function output(testId: string) {
 
 function displayedUser() {
   const value = output('user')
+
   if (!value || value === 'null') return null
+
   return JSON.parse(value) as unknown
 }
 
@@ -105,6 +112,7 @@ afterEach(async () => {
 describe('AuthProvider', () => {
   it('keeps the app initializing until GET /api/auth/me resolves', async () => {
     const session = deferred<CurrentUser | null>()
+
     api.fetchCurrentUser.mockReturnValue(session.promise)
 
     await renderProvider()

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { BoardSummary, ProjectInput } from '../../types/index.js'
+
 import { createBoard, deleteBoard, fetchBoards } from '../../services/boardsApi.js'
+
+import type { BoardSummary, ProjectInput } from '../../types/index.js'
 
 export interface UseProjectsResult {
   projects: BoardSummary[]
@@ -18,8 +20,10 @@ export function useProjects(): UseProjectsResult {
 
   const reload = useCallback(async () => {
     setLoading(true)
+
     try {
       const boards = await fetchBoards()
+
       setProjects(boards)
       setError(null)
     } catch (cause) {
@@ -48,8 +52,10 @@ export function useProjects(): UseProjectsResult {
       role: board.role,
       isPublic: board.isPublic,
     }
+
     setProjects((current) => [project, ...current])
     setError(null)
+
     return project
   }, [])
 

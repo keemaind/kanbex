@@ -25,6 +25,7 @@ export interface AddTaskResult {
 /** Рассчитывает состояние WIP-лимита колонки. */
 export function getWipState(column: BoardColumn): WipState {
   const used = column.tasks.length
+
   return {
     limit: column.wipLimit,
     used,
@@ -68,6 +69,7 @@ export function getBoardProgress(board: Board): BoardProgress {
  */
 export function isTaskCompleted(task: TaskCard, column: BoardColumn, columns: BoardColumn[]): boolean {
   const lastOrder = columns.reduce((max, candidate) => Math.max(max, candidate.order), Number.NEGATIVE_INFINITY)
+
   return column.order === lastOrder && column.tasks.some((item) => item.id === task.id)
 }
 
@@ -90,11 +92,13 @@ function createTaskId(): string {
  */
 export function addTaskToColumn(board: Board, columnId: string, input: NewTaskInput): AddTaskResult {
   const title = input.title.trim()
+
   if (title.length < 2) {
     return { board, task: null, rejection: 'invalid-title' }
   }
 
   const column = board.columns.find((candidate) => candidate.id === columnId)
+
   if (!column) {
     return { board, task: null, rejection: 'not-found' }
   }
@@ -160,6 +164,7 @@ export function moveTaskToColumn(board: Board, taskId: string, targetColumnId: s
   }
 
   const task = sourceColumn.tasks.find((item) => item.id === taskId)
+
   if (!task) {
     return { board, moved: false, rejection: 'not-found', targetColumnId }
   }
@@ -176,6 +181,7 @@ export function moveTaskToColumn(board: Board, taskId: string, targetColumnId: s
 
     if (column.id === targetColumn.id) {
       const nextTasks: TaskCard[] = [...column.tasks, { ...task, order: column.tasks.length }]
+
       return { ...column, tasks: nextTasks.map((item, index) => ({ ...item, order: index })) }
     }
 
@@ -189,6 +195,7 @@ export function moveTaskToColumn(board: Board, taskId: string, targetColumnId: s
 export function getNextColumn(board: Board, columnId: string): BoardColumn | undefined {
   const ordered = [...board.columns].sort((a, b) => a.order - b.order)
   const index = ordered.findIndex((column) => column.id === columnId)
+
   return index >= 0 ? ordered[index + 1] : undefined
 }
 
@@ -196,6 +203,7 @@ export function getNextColumn(board: Board, columnId: string): BoardColumn | und
 export function getPreviousColumn(board: Board, columnId: string): BoardColumn | undefined {
   const ordered = [...board.columns].sort((a, b) => a.order - b.order)
   const index = ordered.findIndex((column) => column.id === columnId)
+
   return index > 0 ? ordered[index - 1] : undefined
 }
 
@@ -206,6 +214,7 @@ export function updateTaskInBoard(
   patch: Partial<Pick<TaskCard, 'title' | 'description' | 'priority' | 'assigneeId' | 'dueDate' | 'estimate'>>,
 ): Board | null {
   const owner = board.columns.find((column) => column.tasks.some((task) => task.id === taskId))
+
   if (!owner) return null
 
   return {
@@ -229,6 +238,7 @@ export interface DeleteTaskResult {
 /** Удаляет карточку и пересчитывает порядок оставшихся в колонке. */
 export function deleteTaskFromBoard(board: Board, taskId: string): DeleteTaskResult {
   const owner = board.columns.find((column) => column.tasks.some((task) => task.id === taskId))
+
   if (!owner) return { board, deleted: false }
 
   return {
@@ -258,6 +268,7 @@ export interface ClearTasksResult {
 /** Удаляет все карточки со всех колонок, сохраняя сами колонки и WIP-лимиты. */
 export function clearAllTasksFromBoard(board: Board): ClearTasksResult {
   const cleared = board.columns.reduce((sum, column) => sum + column.tasks.length, 0)
+
   if (cleared === 0) return { board, cleared: 0 }
 
   return {

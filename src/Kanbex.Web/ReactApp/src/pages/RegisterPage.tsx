@@ -1,8 +1,12 @@
 import { useState } from 'react'
+
 import { Link, useNavigate } from 'react-router'
+
 import { KanbexLogo } from '@kanbex/ui'
+
 import { RegisterForm, useAuth } from '../features/auth/index.js'
 import { describeApiError } from '../services/api.js'
+
 import type { RegisterRequest } from '../types/index.js'
 
 /**
@@ -16,6 +20,7 @@ export function RegisterPage() {
 
   const handleSubmit = async (request: RegisterRequest) => {
     setError(null)
+
     try {
       await register(request)
       navigate('/home', { replace: true })

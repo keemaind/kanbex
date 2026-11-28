@@ -16,9 +16,11 @@ function startOfDay(date: Date): number {
 /** Человекочитаемая дата обновления проекта. */
 export function describeUpdatedAt(value: string, now: Date = new Date()): string {
   const date = new Date(value)
+
   if (Number.isNaN(date.getTime())) return 'Дата обновления неизвестна'
 
   const days = Math.round((startOfDay(now) - startOfDay(date)) / 86_400_000)
+
   if (days <= 0) return 'Обновлён сегодня'
   if (days === 1) return 'Обновлён вчера'
 

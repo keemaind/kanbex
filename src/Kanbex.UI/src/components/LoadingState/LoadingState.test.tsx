@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from '@jest/globals'
+import { render, screen } from '@testing-library/react'
+
 import { LoadingState } from './LoadingState.js'
 
 describe('LoadingState', () => {

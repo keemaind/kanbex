@@ -1,3 +1,5 @@
+import { toApiError } from './api.js'
+
 import type {
   Board,
   BoardMember,
@@ -7,7 +9,6 @@ import type {
   Tag,
   TaskHistoryEntry,
 } from '../types/index.js'
-import { toApiError } from './api.js'
 
 export type { ApiProblem } from './api.js'
 
@@ -27,6 +28,7 @@ async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
   }
 
   if (response.status === 204) return undefined as T
+
   return (await response.json()) as T
 }
 
@@ -35,14 +37,18 @@ let antiforgeryToken: string | null = null
 async function getAntiforgeryToken(): Promise<string> {
   if (antiforgeryToken) return antiforgeryToken
   const response = await fetch('/api/auth/antiforgery-token', { credentials: 'same-origin' })
+
   if (!response.ok) throw await toApiError(response, 'Не удалось получить antiforgery-токен.')
   const body = (await response.json()) as { requestToken: string }
+
   antiforgeryToken = body.requestToken
+
   return antiforgeryToken
 }
 
 async function mutate<T>(url: string, method: 'POST' | 'PUT' | 'DELETE', body?: unknown): Promise<T> {
   const token = await getAntiforgeryToken()
+
   try {
     return await request<T>(url, {
       method,
@@ -97,6 +103,7 @@ export async function saveBoard(board: Board): Promise<BoardSaveResult> {
       })),
     })),
   })
+
   return { board: saved, accepted: true }
 }
 
@@ -217,6 +224,7 @@ export async function fetchPublicBoard(boardId: string): Promise<PublicBoard | n
   })
 
   if (response.status === 404) return null
+
   if (!response.ok) {
     throw await toApiError(response, 'Не удалось загрузить публичную доску.')
   }

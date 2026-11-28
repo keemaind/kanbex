@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Board, BoardColumn, ProjectRole, Tag, TaskCard } from '../../types/index.js'
-import { fetchBoard, resetBoard, saveBoard, setBoardVisibility } from '../../services/boardsApi.js'
-import { ApiError } from '../../services/api.js'
+
 import {
   addTaskToColumn,
   clearAllTasksFromBoard,
@@ -13,6 +11,10 @@ import {
   type MoveTaskResult,
   type NewTaskInput,
 } from './boardLogic.js'
+import { ApiError } from '../../services/api.js'
+import { fetchBoard, resetBoard, saveBoard, setBoardVisibility } from '../../services/boardsApi.js'
+
+import type { Board, BoardColumn, ProjectRole, Tag, TaskCard } from '../../types/index.js'
 
 const AUTOSAVE_DELAY_MS = 900
 
@@ -99,6 +101,7 @@ export function useBoard(boardId: string): UseBoardResult {
     }).finally(() => {
       if (active) setLoading(false)
     })
+
     return () => { active = false }
   }, [boardId])
 
@@ -107,14 +110,17 @@ export function useBoard(boardId: string): UseBoardResult {
 
     const boardAtStart = board
     const revisionAtStart = revisionRef.current
+
     setSaving(true)
     setSaveError(null)
 
     try {
       const result = await saveBoard(boardAtStart)
+
       setBoard((current) => {
         if (!current) return result.board
         if (current === boardAtStart) return result.board
+
         return { ...current, version: result.board.version }
       })
       setDirty(revisionRef.current !== revisionAtStart)
@@ -122,6 +128,7 @@ export function useBoard(boardId: string): UseBoardResult {
       setError(null)
     } catch (cause) {
       const message = messageOf(cause, 'Не удалось сохранить доску.')
+
       setSaveError(message)
       setError(message)
       if (cause instanceof ApiError && cause.status === 409) setConflict(true)
@@ -151,10 +158,12 @@ export function useBoard(boardId: string): UseBoardResult {
 
     try {
       const loaded = await fetchBoard(boardId)
+
       setBoard(loaded)
       setLastMove(null)
     } catch (cause) {
       const message = messageOf(cause, 'Не удалось загрузить доску.')
+
       setError(message)
       throw cause
     } finally {
@@ -167,15 +176,18 @@ export function useBoard(boardId: string): UseBoardResult {
 
     const boardAtStart = board
     const revisionAtStart = revisionRef.current
+
     setSaving(true)
     setSaveError(null)
 
     try {
       const latest = await fetchBoard(boardId)
       const result = await saveBoard({ ...boardAtStart, version: latest.version })
+
       setBoard((current) => {
         if (!current) return result.board
         if (current === boardAtStart) return result.board
+
         return { ...current, version: result.board.version }
       })
       setDirty(revisionRef.current !== revisionAtStart)
@@ -183,6 +195,7 @@ export function useBoard(boardId: string): UseBoardResult {
       setError(null)
     } catch (cause) {
       const message = messageOf(cause, 'Не удалось сохранить доску.')
+
       setSaveError(message)
       setError(message)
       throw cause
@@ -197,6 +210,7 @@ export function useBoard(boardId: string): UseBoardResult {
 
     try {
       const result = await resetBoard(boardId)
+
       revisionRef.current = 0
       setBoard(result)
       setLastMove(null)
@@ -205,6 +219,7 @@ export function useBoard(boardId: string): UseBoardResult {
       setError(null)
     } catch (cause) {
       const message = messageOf(cause, 'Не удалось сбросить доску.')
+
       setSaveError(message)
       setError(message)
       throw cause
@@ -216,51 +231,61 @@ export function useBoard(boardId: string): UseBoardResult {
   const moveTask = useCallback((taskId: string, targetColumnId: string): MoveTaskResult | null => {
     if (!board) return null
     const result = moveTaskToColumn(board, taskId, targetColumnId)
+
     if (result.moved) {
       setBoard(result.board)
       markDirty()
     }
     setLastMove(result)
+
     return result
   }, [board, markDirty])
 
   const addTask = useCallback<UseBoardResult['addTask']>((columnId, input) => {
     if (!board) return null
     const result = addTaskToColumn(board, columnId, input)
+
     if (result.task) {
       setBoard(result.board)
       markDirty()
     }
+
     return result
   }, [board, markDirty])
 
   const updateTask = useCallback<UseBoardResult['updateTask']>((taskId, patch) => {
     if (!board) return null
     const updated = updateTaskInBoard(board, taskId, patch)
+
     if (!updated) return null
 
     setBoard(updated)
     markDirty()
+
     return updated.columns.flatMap((column) => column.tasks).find((task) => task.id === taskId) ?? null
   }, [board, markDirty])
 
   const deleteTask = useCallback((taskId: string) => {
     if (!board) return false
     const result = deleteTaskFromBoard(board, taskId)
+
     if (!result.deleted) return false
 
     setBoard(result.board)
     markDirty()
+
     return true
   }, [board, markDirty])
 
   const clearTasks = useCallback(() => {
     if (!board) return 0
     const result = clearAllTasksFromBoard(board)
+
     if (result.cleared === 0) return 0
 
     setBoard(result.board)
     markDirty()
+
     return result.cleared
   }, [board, markDirty])
 
@@ -288,23 +313,28 @@ export function useBoard(boardId: string): UseBoardResult {
     // участвуют в PUT доски, поэтому dirty не выставляется.
     setBoard((current) => {
       if (!current) return null
+
       if (!current.columns.some((column) => column.tasks.some((task) => task.id === taskId))) {
         return current
       }
 
       const columns = current.columns.map((column) => {
         if (!column.tasks.some((task) => task.id === taskId)) return column
+
         return {
           ...column,
           tasks: column.tasks.map((task) => {
             if (task.id !== taskId) return task
             const next: TaskCard = { ...task }
+
             if (meta.tags !== undefined) next.tags = meta.tags
             if (meta.commentCount !== undefined) next.commentCount = meta.commentCount
+
             return next
           }),
         }
       })
+
       return { ...current, columns }
     })
   }, [])

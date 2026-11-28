@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
+
 import { AppButton, AppDialog, AppTextField, LoadingState } from '@kanbex/ui'
-import { createTag, deleteTag, fetchTags, updateTag } from '../../services/boardsApi.js'
-import { describeApiError } from '../../services/api.js'
-import type { Tag } from '../../types/index.js'
+
 import { TagColorPicker } from './TagColorPicker.js'
+import { describeApiError } from '../../services/api.js'
+import { createTag, deleteTag, fetchTags, updateTag } from '../../services/boardsApi.js'
+
+import type { Tag } from '../../types/index.js'
 
 export interface TagManagerDialogProps {
   boardId: string
@@ -58,15 +61,19 @@ export function TagManagerDialog({ boardId, onTagUpdated, onTagDeleted, onClose 
     event?.preventDefault()
 
     const name = newName.trim()
+
     if (name.length === 0 || name.length > 64) {
       setError('Имя тега — от 1 до 64 символов.')
+
       return
     }
 
     setCreating(true)
     setError(null)
+
     try {
       const created = await createTag(boardId, name, newColor)
+
       setTags((current) => (current ? [...current, created] : [created]))
       setNewName('')
       setNewColor(DEFAULT_COLOR)
@@ -87,15 +94,19 @@ export function TagManagerDialog({ boardId, onTagUpdated, onTagDeleted, onClose 
 
   const handleSaveEdit = async (tag: Tag) => {
     const name = editName.trim()
+
     if (name.length === 0 || name.length > 64) {
       setError('Имя тега — от 1 до 64 символов.')
+
       return
     }
 
     setSavingTagId(tag.id)
     setError(null)
+
     try {
       const updated = await updateTag(boardId, tag.id, name, editColor)
+
       setTags((current) => (current ? current.map((item) => (item.id === tag.id ? updated : item)) : current))
       setEditingTagId(null)
       onTagUpdated?.(updated)
@@ -109,6 +120,7 @@ export function TagManagerDialog({ boardId, onTagUpdated, onTagDeleted, onClose 
   const handleDelete = async (tag: Tag) => {
     setSavingTagId(tag.id)
     setError(null)
+
     try {
       await deleteTag(boardId, tag.id)
       setTags((current) => (current ? current.filter((item) => item.id !== tag.id) : current))

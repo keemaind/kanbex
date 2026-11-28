@@ -1,6 +1,8 @@
 import { createRef } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+
 import { describe, expect, it, jest } from '@jest/globals'
+import { fireEvent, render, screen } from '@testing-library/react'
+
 import { AppButton } from './AppButton.js'
 
 describe('AppButton', () => {
@@ -22,6 +24,7 @@ describe('AppButton', () => {
     )
 
     const button = screen.getByRole('button')
+
     expect(button).toHaveTextContent('+Создать!')
     expect(ref.current).toBe(button)
 
@@ -37,6 +40,7 @@ describe('AppButton', () => {
     )
 
     const button = screen.getByRole('button')
+
     expect(button).toHaveStyle({ width: '100%' })
     expect(button.getAttribute('style')).toContain('color: red')
   })

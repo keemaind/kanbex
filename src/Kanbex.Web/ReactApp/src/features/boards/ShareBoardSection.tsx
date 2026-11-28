@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+
 import { AppButton, AppSwitch, StatusBadge } from '@kanbex/ui'
+
 import { describeApiError } from '../../services/api.js'
 
 export interface ShareBoardSectionProps {
@@ -28,6 +30,7 @@ export function ShareBoardSection({ boardId, isPublic, onVisibilityChange }: Sha
     setBusy(true)
     setError(null)
     setCopied(false)
+
     try {
       await onVisibilityChange(selected)
       setChecked(selected)

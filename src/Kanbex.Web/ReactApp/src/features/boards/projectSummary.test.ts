@@ -1,4 +1,5 @@
 import { describe, expect, it } from '@jest/globals'
+
 import { describeUpdatedAt, getProjectProgress } from './projectSummary.js'
 
 describe('getProjectProgress', () => {

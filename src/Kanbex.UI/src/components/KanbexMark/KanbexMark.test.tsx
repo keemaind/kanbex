@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from '@jest/globals'
+import { render, screen } from '@testing-library/react'
+
 import { KanbexMark } from './KanbexMark.js'
 
 describe('KanbexMark', () => {
@@ -7,6 +8,7 @@ describe('KanbexMark', () => {
     render(<KanbexMark />)
 
     const mark = screen.getByRole('img', { name: 'Kanbex' })
+
     expect(mark).toHaveClass('kb-mark')
     expect(mark).toHaveAttribute('viewBox', '76 89 148 147')
     expect(mark).toHaveStyle({ height: '32px' })
@@ -21,6 +23,7 @@ describe('KanbexMark', () => {
     render(<KanbexMark height={48} label="Знак Kanbex" className="kb-mark--rail" />)
 
     const mark = screen.getByRole('img', { name: 'Знак Kanbex' })
+
     expect(mark).toHaveClass('kb-mark', 'kb-mark--rail')
     expect(mark).toHaveStyle({ height: '48px' })
   })
